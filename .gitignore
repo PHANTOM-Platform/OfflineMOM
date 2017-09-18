@@ -1,0 +1,16 @@
+# Eclipse
+.settings
+.project
+.pydevproject
+
+# OSX
+.DS_Store
+
+# Outputs
+output
+build.xml
+mast_parser.lis
+
+# Examples which cannot be shared
+
+examples/intecs

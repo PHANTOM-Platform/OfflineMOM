@@ -1,0 +1,69 @@
+[%
+import "operations.eol";
+%]
+
+-- @@mast default
+
+[%
+// List the processing units in the system with fixed priority components
+
+for (match in CPUsWithFPComponents) {
+    var cpu = match.getRoleBindings().get("cpu");
+%]
+Processing_Resource (
+	Type => Fixed_Priority_Processor,
+	Name => [%=cpu.name%]);
+[%
+}
+%]
+
+
+[%
+// For each mapping define a scheduling server and operation
+
+for (match in FPComponentMappings) {
+    var mapping = match.getRoleBindings().get("mapping");
+    var component = match.getRoleBindings().get("component");
+    var cpu = match.getRoleBindings().get("cpu");
+%]
+
+Scheduling_Server (
+	Type => Fixed_Priority,
+	Name => sch_server_[%=mapping.name%],
+	Server_Sched_Parameters => (
+		Type => Fixed_Priority_policy,
+		The_Priority => [%=mapping.getSP("priority")%]),
+	Server_Processing_Resource => [%=cpu.name%]);
+
+Transaction (
+	Type => Regular,
+	Name => trans_[%=mapping.name%]_[%=component.name%],
+	External_Events => (
+		(Type => Periodic, Name => [%=mapping.name%]_[%=component.name%]_input_event, Period => [%=mapping.getSP("period")%])),
+	Internal_Events => (
+		(Type => regular,
+		name => [%=mapping.name%]_[%=component.name%]_output_event[%
+if (component.hasNFR("execution-time")) {
+%]
+		,
+        Timing_Requirements => (Type => Hard_Global_Deadline, Deadline => [%=component.getNFR("execution-time")%], Referenced_Event => [%=mapping.name%]_[%=component.name%]_input_event)
+[%
+}
+%]
+        )),
+
+	Event_Handlers => (
+		(Type => Activity,
+		Input_Event => [%=mapping.name%]_[%=component.name%]_input_event,
+		Output_Event => [%=mapping.name%]_[%=component.name%]_output_event,
+		Activity_Operation => operation_[%=mapping.name%]_[%=component.name%],
+		Activity_Server => sch_server_[%=mapping.name%]))
+);
+
+Operation (
+    Type => Simple,
+    Name => operation_[%=mapping.name%]_[%=component.name%], Worst_Case_Execution_Time => [%=component.mFMonitoredComputationTime.value1%]);
+
+[%
+}
+%]

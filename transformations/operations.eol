@@ -1,0 +1,49 @@
+//Does the mapping have a specific scheduling parameter?
+operation DE!MappingType hasSP(name : String) : Boolean {
+    return self.schedulingParam.exists(sp | sp.name = name);
+}
+
+//Fetch the value of a named scheduling parameter from a mapping
+operation DE!MappingType getSP(name : String) : String {
+    if (not self.hasSP(name)) {
+        return "0";
+    } else {
+        return self.schedulingParam.select(sp|sp.name = name).first().value;
+    }
+}
+
+//Does the component have a non-functional requirement of the given type?
+operation CN!ComponentType hasNFR(name : String) : Boolean {
+    if(self.requirements.nonFunctional.isKindOf(Sequence(CN!NonFunctionalType))) {
+        return self.requirements.nonFunctional.exists(r | r.type = name);
+    } else {
+        return (self.requirements.nonFunctional.type.asString() = name);
+    }
+}
+
+//Fetch the value of a named non-functional requirement from the component
+operation CN!ComponentType getNFR(name : String) : String {
+    if (not self.hasNFR(name)) {
+        return "0";
+    } else {
+        if(self.requirements.nonFunctional.isKindOf(Sequence(CN!NonFunctionalType))) {
+            return self.requirements.nonFunctional.select(r | r.type = name).first().maxValue.asString();
+        } else {
+            return self.requirements.nonFunctional.maxValue.asString();
+        }
+    }
+}
+
+
+//Fetch the target processor's name from a DE!Mapping
+//The name is supposed to be stored in "cpuName" but the mapping has a name and so this could be used. 
+//If cpuName is not defined, use name.
+operation DE!MappingType getCpuName() : String {
+	if (self.processor.hasProperty("cpuName") and not (self.processor.cpuName.asString() = "")) {
+		return self.processor.cpuName;
+	} else if (self.processor.hasProperty("name")) {
+		return self.processor.name;
+	} else {
+		return "";
+	}
+}

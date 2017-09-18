@@ -1,0 +1,38 @@
+
+-- @@mast default
+
+Processing_Resource (
+	Type => Fixed_Priority_Processor,
+	Name => CPU1);
+
+
+Scheduling_Server (
+	Type => Fixed_Priority,
+	Name => sch_server_component_A_map,
+	Server_Sched_Parameters => (
+		Type => Fixed_Priority_policy,
+		The_Priority => 2),
+	Server_Processing_Resource => CPU1);
+
+Transaction (
+	Type => Regular,
+	Name => trans_component_A_map_ComponentA,
+	External_Events => (
+		(Type => Periodic, Name => component_A_map_ComponentA_input_event, Period => 500)),
+	Internal_Events => (
+		(Type => regular,
+		name => component_A_map_ComponentA_output_event		,
+        Timing_Requirements => (Type => Hard_Global_Deadline, Deadline => 500, Referenced_Event => component_A_map_ComponentA_input_event)
+        )),
+
+	Event_Handlers => (
+		(Type => Activity,
+		Input_Event => component_A_map_ComponentA_input_event,
+		Output_Event => component_A_map_ComponentA_output_event,
+		Activity_Operation => operation_component_A_map_ComponentA,
+		Activity_Server => sch_server_component_A_map))
+);
+
+Operation (
+    Type => Simple,
+    Name => operation_component_A_map_ComponentA, Worst_Case_Execution_Time => 400);

@@ -1,0 +1,44 @@
+import "operations.eol";
+
+/*
+ * Match all mappings from a component to a processor that have a priority.
+ */
+pattern FPComponentMappings
+	mapping : DE!MappingType,
+	cpu : PD!CpuType,
+	component : CN!ComponentType
+{
+	match {
+		if (mapping.component.hasProperty("name") and
+		mapping.component.name = component.name and
+		mapping.type.asString() = "processing" and
+		mapping.getCpuName() = cpu.name and
+		mapping.hasSP("priority") and
+		mapping.hasSP("period")) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+}
+
+/*
+ * Match all CPUs with components assigned to it.
+ * The components must have a fixed priority and a WCET.
+ * WCET is passed from the monitoring framework as mFMonitoredComputationTime
+ * or mBTEstimatedComputationTime.
+ */
+pattern CPUsWithFPComponents
+	cpu : PD!CpuType,
+	mappings : DE!MappingType[*] from:
+		DE!MappingType.all.select(m | m.type.asString() = "processing" and m.getCpuName() = cpu.name),
+	components : CN!ComponentType[*] from:
+		CN!ComponentType.all
+			.select(c | c.mFMonitoredComputationTime.value1 > 0 or c.mFMonitoredComputationTime.value <> "")
+			.select(c | mappings.component.exists(e | e.name = c.name))
+{
+	match {
+		return true;
+	}
+
+}
