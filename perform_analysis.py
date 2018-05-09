@@ -1,34 +1,62 @@
 #!/usr/bin/env python3
 
-import os, sys, glob, subprocess
+import os, sys, glob, subprocess, shutil
+import settings, repository
+from settings import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA, ANSI_CYAN, ANSI_END
+
 from xml.dom import expatbuilder
 
-ANTFILE = "build.xml"
-DEFAULT_ECLIPSE_INSTALL = "/opt/eclipse*"
-
-ANSI_RED = "\033[1;31m"
-ANSI_GREEN = "\033[1;32m"
-ANSI_YELLOW = "\033[1;33m"
-ANSI_BLUE = "\033[1;34m"
-ANSI_MAGENTA = "\033[1;35m"
-ANSI_CYAN = "\033[1;36m"
-ANSI_END = "\033[0;0m"
-
 def main():
-	if len(sys.argv) < 3:
-		print("Usage: {} <input model dir> <output dir>".format(sys.argv[0]))
+
+	if len(sys.argv) < 2:
+		print("Usage: {} [mode] <args for mode>".format(sys.argv[0]))
 		sys.exit(1)
 
-	inputdir = enforce_trailing_slash(sys.argv[1])
-	outputdir = enforce_trailing_slash(sys.argv[2])
+	if sys.argv[1] == 'upload':
+		if len(sys.argv) < 4:
+			print("Usage: {} upload <source file> <destpath>".format(sys.argv[0]))
+			sys.exit(1)
+		repository.uploadFile(sys.argv[2], enforce_trailing_slash(sys.argv[3]))
+		print("Upload complete.")
+	elif sys.argv[1] == 'download':
+		if len(sys.argv) < 4:
+			print("Usage: {} download <file> <outputfile>".format(sys.argv[0]))
+			sys.exit(1)
+		repository.downloadFile(sys.argv[2], sys.argv[3])
+		print("Download complete.")
+	elif sys.argv[1] == 'remote':
+		if len(sys.argv) < 4:
+			print("Usage: {} remote <model name> <outputdir>".format(sys.argv[0]))
+			sys.exit(1)
+		tmpdir = os.path.join(os.path.dirname(sys.argv[0]), '_tmp')
+		repository.downloadFiles(sys.argv[2], tmpdir)
 
-	if len(sys.argv) > 3 and sys.argv[3] == "verbose":
-		verbose = True
+		inputdir = enforce_trailing_slash(tmpdir)
+		outputdir = enforce_trailing_slash(sys.argv[3])
+		local_mode(inputdir, outputdir, sys.argv[2])
+
+	elif sys.argv[1] == 'local':
+		if len(sys.argv) < 4:
+			print("Usage: {} local <input model dir> <output dir>".format(sys.argv[0]))
+			sys.exit(1)
+
+		inputdir = enforce_trailing_slash(sys.argv[2])
+		outputdir = enforce_trailing_slash(sys.argv[3])
+		local_mode(inputdir, outputdir, None)
+
 	else:
-		verbose = False
+		print("Invalid mode.")
+		sys.exit(1)
+
+
+
+
+
+def local_mode(inputdir, outputdir, uploadoncedone):
+	verbose = False
 
 	#Find eclipse
-	eclipse_install = find_eclipse_install(DEFAULT_ECLIPSE_INSTALL)
+	eclipse_install = find_eclipse_install(settings.default_eclipse_install)
 	print("Using Epsilon install at {}".format(eclipse_install))
 
 	models = find_input_models(inputdir)
@@ -44,12 +72,12 @@ def main():
 	#Now run an analysis for each deployment
 	found = None
 	for dep in models['de']:
-		print(ANSI_CYAN + "Constructing build file {}{} for deployment {}...".format(outputdir, ANTFILE, dep) + ANSI_END)
-		create_ant_file(ANTFILE, models, dep, inputdir, outputdir)
+		print(ANSI_CYAN + "Constructing build file {}{} for deployment {}...".format(outputdir, settings.antfile, dep) + ANSI_END)
+		create_ant_file(settings.antfile, models, dep, inputdir, outputdir)
 
 		#Run the Epsilon installation to create output files in outputdir
 		print("Running Epsilon pattern matching and transformations...")
-		execute_epsilon(eclipse_install, ANTFILE)
+		execute_epsilon(eclipse_install, settings.antfile)
 
 		#For each file in outputdir, run a real-time analysis
 		result = perform_analyses(outputdir, verbose)
@@ -62,12 +90,21 @@ def main():
 	if found == None:
 		print(ANSI_RED + "No valid deployments found." + ANSI_END)
 
+	if uploadoncedone:
+		newfilename = os.path.join(os.path.dirname(dep), "validated_deployment.xml")
+		print(ANSI_YELLOW + "{} -> {}".format(dep, newfilename) + ANSI_END)
+		shutil.copyfile(dep, newfilename)
+		print(ANSI_YELLOW + "Sending validated deployment {} to repository".format(dep) + ANSI_END)
+		repository.uploadFile(newfilename, uploadoncedone)
+
+
+
 
 def find_eclipse_install(default_path):
 	'''
 	Search for an Eclipse-Epsilon install to use for the transformations.
 	If the ECLIPSE environment variable is set this is used, otherwise
-	DEFAULT_ECLIPSE_INSTALL is seached.
+	default_eclipse_install is seached.
 	'''
 	if 'ECLIPSE' in os.environ:
 		ei = os.environ['ECLIPSE']
@@ -136,7 +173,7 @@ def find_input_models(inputdir):
 
 def create_ant_file(path, models, dep, inputdir, outputdir):
 	'''
-	Generate the ANT build file which runs the Epsilon transformations as ANTFILE.
+	Generate the ANT build file which runs the Epsilon transformations as settings.antfile.
 	'''
 
 	pattern_models = []
