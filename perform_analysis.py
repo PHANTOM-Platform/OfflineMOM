@@ -2,6 +2,7 @@
 
 import os, sys, glob, subprocess, shutil
 import settings, repository
+import websocket
 from settings import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA, ANSI_CYAN, ANSI_END
 
 from xml.dom import expatbuilder
@@ -13,17 +14,24 @@ def main():
 		sys.exit(1)
 
 	if sys.argv[1] == 'upload':
-		if len(sys.argv) < 4:
-			print("Usage: {} upload <source file> <destpath>".format(sys.argv[0]))
+		if len(sys.argv) < 6:
+			print("Usage: {} upload <source file> <destpath> <data_type> <checked>".format(sys.argv[0]))
 			sys.exit(1)
-		repository.uploadFile(sys.argv[2], enforce_trailing_slash(sys.argv[3]))
+		repository.uploadFile(
+			sys.argv[2],
+			enforce_trailing_slash(sys.argv[3]),
+			sys.argv[4],
+			sys.argv[5]
+		)
 		print("Upload complete.")
+
 	elif sys.argv[1] == 'download':
 		if len(sys.argv) < 4:
 			print("Usage: {} download <file> <outputfile>".format(sys.argv[0]))
 			sys.exit(1)
 		repository.downloadFile(sys.argv[2], sys.argv[3])
 		print("Download complete.")
+
 	elif sys.argv[1] == 'remote':
 		if len(sys.argv) < 3:
 			print("Usage: {} remote <model name>".format(sys.argv[0]))
@@ -39,11 +47,31 @@ def main():
 		if len(sys.argv) < 4:
 			print("Usage: {} local <input model dir> <output dir>".format(sys.argv[0]))
 			sys.exit(1)
-
 		inputdir = enforce_trailing_slash(sys.argv[2])
 		outputdir = enforce_trailing_slash(sys.argv[3])
 		local_mode(inputdir, outputdir, None)
 
+	elif sys.argv[1] == 'subscribe':
+		if len(sys.argv) < 3:
+			print("Usage: {} subscribe <model name>".format(sys.argv[0]))
+			sys.exit(1)
+		tmpdir = os.path.join(os.path.dirname(sys.argv[0]), '_tmp')
+		inputdir = enforce_trailing_slash(tmpdir)
+		outputdir = inputdir
+
+		print(ANSI_GREEN + "Subscribing to project {}. Waiting for updates...".format(sys.argv[2]) + ANSI_END)
+		ws = websocket.create_connection("ws://localhost:{}".format(settings.websocket_port))
+		req = "{{\"user\":\"{}\" , \"project\":\"{}\"}}".format(settings.repository_user, settings.repository_projectname)
+		ws.send(req)
+		result = ws.recv()
+
+		#TODO: Parse reply properly
+
+		while True:
+			result = ws.recv()
+			repository.downloadFiles(sys.argv[2], tmpdir)
+			local_mode(inputdir, outputdir, sys.argv[2])
+			sys.exit(1)
 	else:
 		print("Invalid mode.")
 		sys.exit(1)
@@ -91,12 +119,12 @@ def local_mode(inputdir, outputdir, uploadoncedone):
 		print(ANSI_RED + "No valid deployments found." + ANSI_END)
 
 	if uploadoncedone:
-		newfilename = os.path.join(os.path.dirname(dep), "validated_deployment.xml")
-		print(ANSI_YELLOW + "{} -> {}".format(dep, newfilename) + ANSI_END)
-		shutil.copyfile(dep, newfilename)
-		print(ANSI_YELLOW + "Sending validated deployment {} to repository".format(dep) + ANSI_END)
-		repository.uploadFile(newfilename, uploadoncedone)
-
+		#newfilename = os.path.join(os.path.dirname(dep), "validated_deployment.xml")
+		#print(ANSI_YELLOW + "{} -> {}".format(dep, newfilename) + ANSI_END)
+		#shutil.copyfile(dep, newfilename)
+		print(ANSI_YELLOW + "Updating metadata of validated deployment {} in repository".format(dep) + ANSI_END)
+		repository.uploadFile(dep, uploadoncedone, "deployment", "yes")
+		print(ANSI_YELLOW + "Done." + ANSI_END)
 
 
 

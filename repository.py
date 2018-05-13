@@ -7,6 +7,40 @@ repo_token_url = "http://localhost:{}/login?email={}&pw={}".format(
 	settings.repository_port, settings.repository_user, settings.repository_pass)
 
 
+def websocket():
+	import websocket
+	ws = websocket.create_connection("ws://localhost:8500")
+	req = "{{\"user\":\"{}\" , \"project\":\"{}\"}}".format(settings.repository_user, settings.repository_projectname)
+	ws.send(req)
+	print("Sent: {}".format(req))
+	print("Receiving...")
+	while True:
+		result = ws.recv()
+		print("Received {}".format(result))
+	ws.close()
+
+
+def getAllFilesOfType(type, path):
+	"""
+	TODO: Cannot make this work yet
+	"""
+	token = authenticate()
+	url = "http://localhost:{}/query_metadata?project=\"{}\"&source=\"{}\"&filepath=\"{}\"&filename=\"{}\"".format(
+		settings.repository_port,
+		settings.repository_projectname,
+		settings.repository_source,
+		"",
+		""
+	)
+	headers = {'Authorization': "OAuth {}".format(token), 'Content-Type': 'multipart/form-data'}
+	rv = requests.get(url, headers=headers)
+	if rv.status_code != 200:
+		print("Could not download file from the repository. Status code: {}\n{}".format(rv.status_code, rv.text))
+		sys.exit(1)
+	print(rv.text)
+
+
+
 def authenticate():
 	"""
 	Authenticate with the repository
@@ -20,7 +54,7 @@ def authenticate():
 	return rv.text
 
 
-def uploadFile(filetoupload, destpath):
+def uploadFile(filetoupload, destpath, data_type, checked, websocket_update=True):
 	"""
 	Upload the given file to the repository
 	"""
@@ -35,7 +69,10 @@ def uploadFile(filetoupload, destpath):
 	)
 
 	headers = {'Authorization': "OAuth {}".format(token)}
-	uploadjson = "{{\"project\": \"{}\", \"source\": \"{}\"}}".format(settings.repository_projectname, settings.repository_source)
+	uploadjson = "{{\"project\": \"{}\", \"source\": \"{}\", \"data_type\": \"{}\", \"checked\": \"{}\"}}".format(
+		settings.repository_projectname,
+		settings.repository_source,
+		data_type, checked)
 	files = {
 		'UploadFile': open(filetoupload, 'rb'),
 		'UploadJSON': uploadjson
@@ -44,6 +81,18 @@ def uploadFile(filetoupload, destpath):
 	if rv.status_code != 200:
 		print("Could not upload file to repository. Status code: {}\n{}".format(rv.status_code, rv.text))
 		sys.exit(1)
+
+	if websocket_update:
+		uploadjson = "{{\"project\": \"{}\", \"source\": \"{}\"}}".format(
+			settings.repository_projectname,
+			settings.repository_source)
+		url = "http://localhost:{}/update_project_tasks".format(settings.websocket_port)
+		rv = requests.post(url, files={'UploadJSON': uploadjson}, headers=headers)
+		if rv.status_code != 200:
+			print("Could not update task. Status code: {}\n{}".format(rv.status_code, rv.text))
+			sys.exit(1)
+		print(rv.text)
+
 
 def downloadFile(filetodownload, destfile):
 	"""
@@ -89,5 +138,10 @@ def downloadFiles(srcdir, targetdir):
 	print(ANSI_YELLOW + "Fetching files from repository..." + ANSI_END)
 
 	for fn in rv.text.split('\n'):
-		if len(fn) > 0:
+		if len(fn) > 0 and os.path.basename(fn)[0] != '.':
 			downloadFile(srcdir + "/" + os.path.basename(fn), targetdir + "/" + os.path.basename(fn))
+
+
+if __name__ == "__main__":
+	#getAllFilesOfType("type", "intecs")
+	websocket()
