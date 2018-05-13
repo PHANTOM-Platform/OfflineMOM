@@ -25,14 +25,14 @@ def main():
 		repository.downloadFile(sys.argv[2], sys.argv[3])
 		print("Download complete.")
 	elif sys.argv[1] == 'remote':
-		if len(sys.argv) < 4:
-			print("Usage: {} remote <model name> <outputdir>".format(sys.argv[0]))
+		if len(sys.argv) < 3:
+			print("Usage: {} remote <model name>".format(sys.argv[0]))
 			sys.exit(1)
 		tmpdir = os.path.join(os.path.dirname(sys.argv[0]), '_tmp')
 		repository.downloadFiles(sys.argv[2], tmpdir)
 
 		inputdir = enforce_trailing_slash(tmpdir)
-		outputdir = enforce_trailing_slash(sys.argv[3])
+		outputdir = inputdir
 		local_mode(inputdir, outputdir, sys.argv[2])
 
 	elif sys.argv[1] == 'local':

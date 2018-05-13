@@ -11,6 +11,7 @@ output
 build.xml
 mast_parser.lis
 __pycache__
+_tmp
 
 # Examples which cannot be shared
 
