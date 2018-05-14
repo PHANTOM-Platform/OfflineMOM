@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
-import os, sys, glob, subprocess, shutil
+import os, sys, glob, subprocess
 import settings, repository, epsilon
 import websocket
 from settings import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA, ANSI_CYAN, ANSI_END
+from epsilon import enforce_trailing_slash
 
 from xml.dom import expatbuilder
 
@@ -103,7 +104,7 @@ def local_mode(inputdir, outputdir, uploadoncedone):
 
 		#Run the Epsilon installation to create output files in outputdir
 		print("Running Epsilon pattern matching and transformations...")
-		execute_epsilon(eclipse_install, settings.antfile)
+		epsilon.execute_epsilon(eclipse_install, settings.antfile)
 
 		#For each file in outputdir, run a real-time analysis
 		result, failure_reason = perform_analyses(outputdir, verbose)
@@ -126,19 +127,6 @@ def local_mode(inputdir, outputdir, uploadoncedone):
 		repository.uploadFile(dep, uploadoncedone, "deployment", "yes")
 		print(ANSI_YELLOW + "Done." + ANSI_END)
 
-
-
-
-
-
-def enforce_trailing_slash(path):
-	'''
-	Returns path, with the '/' character appended if it did not already end with it
-	'''
-	if path[-1] != '/':
-		return path + '/'
-	else:
-		return path
 
 
 def find_input_models(inputdir):
