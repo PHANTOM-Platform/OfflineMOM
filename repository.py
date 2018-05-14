@@ -1,4 +1,4 @@
-import requests, os
+import requests, os, sys
 import settings
 from settings import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA, ANSI_CYAN, ANSI_END
 
@@ -6,18 +6,6 @@ from settings import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA,
 repo_token_url = "http://localhost:{}/login?email={}&pw={}".format(
 	settings.repository_port, settings.repository_user, settings.repository_pass)
 
-
-def websocket():
-	import websocket
-	ws = websocket.create_connection("ws://localhost:8500")
-	req = "{{\"user\":\"{}\" , \"project\":\"{}\"}}".format(settings.repository_user, settings.repository_projectname)
-	ws.send(req)
-	print("Sent: {}".format(req))
-	print("Receiving...")
-	while True:
-		result = ws.recv()
-		print("Received {}".format(result))
-	ws.close()
 
 
 def getAllFilesOfType(type, path):
@@ -46,17 +34,22 @@ def authenticate():
 	Authenticate with the repository
 	Returns the OAuth token, or exits if authentication fails.
 	"""
-	headers = {'content-type': 'text/plain'}
-	rv = requests.get(repo_token_url, headers=headers)
-	if rv.status_code != 200:
-		print("Could not log in to repository. Status code: {}\n{}".format(rv.status_code, rv.text))
+	try:
+		headers = {'content-type': 'text/plain'}
+		rv = requests.get(repo_token_url, headers=headers)
+		if rv.status_code != 200:
+			print("Could not log in to repository. Status code: {}\n{}".format(rv.status_code, rv.text))
+			sys.exit(1)
+		return rv.text
+	except requests.exceptions.ConnectionError as e:
+		print(ANSI_RED + "Connection refused when connecting to the repository." + ANSI_END)
 		sys.exit(1)
-	return rv.text
 
 
 def uploadFile(filetoupload, destpath, data_type, checked, websocket_update=True):
 	"""
-	Upload the given file to the repository
+	Upload the given file to the repository. If websocket_update then the
+	metadata for the given file is updated, which will notify all subscribers
 	"""
 	token = authenticate()
 	if not os.path.isfile(filetoupload):
@@ -91,7 +84,6 @@ def uploadFile(filetoupload, destpath, data_type, checked, websocket_update=True
 		if rv.status_code != 200:
 			print("Could not update task. Status code: {}\n{}".format(rv.status_code, rv.text))
 			sys.exit(1)
-		print(rv.text)
 
 
 def downloadFile(filetodownload, destfile):
@@ -122,6 +114,7 @@ def downloadFile(filetodownload, destfile):
 def downloadFiles(srcdir, targetdir):
 	"""
 	Download the entire contents of a given directory in the repository to targetdir
+	Hidden files (that begin with a .) are not downloaded.
 	"""
 	token = authenticate()
 	url = "http://localhost:{}/downloadlist?project=\"{}\"&source=\"{}\"&filepath={}".format(
@@ -142,6 +135,5 @@ def downloadFiles(srcdir, targetdir):
 			downloadFile(srcdir + "/" + os.path.basename(fn), targetdir + "/" + os.path.basename(fn))
 
 
-if __name__ == "__main__":
+#if __name__ == "__main__":
 	#getAllFilesOfType("type", "intecs")
-	websocket()

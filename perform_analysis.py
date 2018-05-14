@@ -11,18 +11,14 @@ def main():
 
 	if len(sys.argv) < 2:
 		print("Usage: {} [mode] <args for mode>".format(sys.argv[0]))
+		print("Valid modes are: upload, download, remote, local, subscribe")
 		sys.exit(1)
 
 	if sys.argv[1] == 'upload':
 		if len(sys.argv) < 6:
 			print("Usage: {} upload <source file> <destpath> <data_type> <checked>".format(sys.argv[0]))
 			sys.exit(1)
-		repository.uploadFile(
-			sys.argv[2],
-			enforce_trailing_slash(sys.argv[3]),
-			sys.argv[4],
-			sys.argv[5]
-		)
+		repository.uploadFile(sys.argv[2], enforce_trailing_slash(sys.argv[3]), sys.argv[4], sys.argv[5])
 		print("Upload complete.")
 
 	elif sys.argv[1] == 'download':
@@ -38,7 +34,6 @@ def main():
 			sys.exit(1)
 		tmpdir = os.path.join(os.path.dirname(sys.argv[0]), '_tmp')
 		repository.downloadFiles(sys.argv[2], tmpdir)
-
 		inputdir = enforce_trailing_slash(tmpdir)
 		outputdir = inputdir
 		local_mode(inputdir, outputdir, sys.argv[2])
@@ -74,13 +69,16 @@ def main():
 			sys.exit(1)
 	else:
 		print("Invalid mode.")
+		print("Valid modes are: upload, download, remote, local, subscribe")
 		sys.exit(1)
 
 
-
-
-
 def local_mode(inputdir, outputdir, uploadoncedone):
+	"""
+	Read the model from inputdir, creating all output files into outputdir.
+	If uploadoncedone, then the metadata in the repository is updated for eadh
+	deployment tested according to the result.
+	"""
 	verbose = False
 
 	#Find eclipse
@@ -108,12 +106,14 @@ def local_mode(inputdir, outputdir, uploadoncedone):
 		execute_epsilon(eclipse_install, settings.antfile)
 
 		#For each file in outputdir, run a real-time analysis
-		result = perform_analyses(outputdir, verbose)
+		result, failure_reason = perform_analyses(outputdir, verbose)
 		if result == True:
 			print(ANSI_GREEN + "Cannot invalidate deployment {}".format(dep) + ANSI_END)
 			found = dep
 			summarise_deployment(dep)
 			break
+		else:
+			print(ANSI_RED + "Deployment {} invalidated by test {}.".format(dep, failure_reason) + ANSI_END)
 
 	if found == None:
 		print(ANSI_RED + "No valid deployments found." + ANSI_END)
@@ -263,10 +263,12 @@ def execute_epsilon(eclipse, antfile):
 
 def perform_analyses(outputdir, verbose):
 	'''
-	Run all the analysis files. Returns True if all pass, or False if any fail.
+	Run all the analysis files. Returns (True, "") if all pass, or (False, "analysis") if any fail,
+	where "analysis" is the name of the analysis which caused the failure.
 	'''
 	outputs = glob.glob('{}/*.txt'.format(outputdir))
 	passed = True
+	failure_reason = ""
 
 	#Determine max length of maching filenames
 	maxlen = 0
@@ -309,9 +311,10 @@ def perform_analyses(outputdir, verbose):
 					else:
 						print(ANSI_RED + "System unschedulable!" + ANSI_END)
 						passed = False
+						failure_reason = basename
 			else:
 				print("File {} requests an unknown analysis tool: {}. Skipped.".format(output, args[0]))
-	return passed
+	return (passed, failure_reason)
 
 
 def summarise_deployment(filename):
