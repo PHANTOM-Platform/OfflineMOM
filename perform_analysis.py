@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, sys, glob, subprocess
+import os, sys, glob, subprocess, json
 import settings, repository, epsilon
 import websocket
 from settings import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA, ANSI_CYAN, ANSI_END
@@ -61,13 +61,32 @@ def main():
 		ws.send(req)
 		result = ws.recv()
 
+		try:
+			reply = json.loads(result)
+			if not 'suscribed_to_project' in reply:
+				raise json.decoder.JSONDecodeError
+		except json.decoder.JSONDecodeError:
+			print(ANSI_RED + "Invalid response from Application Manager. Resonse: {}".format(result))
+			sys.exit(1)
+
 		#TODO: Parse reply properly
 
 		while True:
-			result = ws.recv()
-			repository.downloadFiles(sys.argv[2], tmpdir)
-			local_mode(inputdir, outputdir, sys.argv[2])
-			sys.exit(1)
+			try:
+				result = ws.recv()
+				reply = json.loads(result)
+				print(reply)
+				if 'project' in reply and reply['project'] == settings.repository_projectname:
+					print(ANSI_GREEN + "Project has been updated. Checking for updated deployments..." + ANSI_END)
+					repository.downloadFiles(sys.argv[2], tmpdir)
+					local_mode(inputdir, outputdir, sys.argv[2])
+					#TODO: This should loop, but until the metadata extraction is working properly
+					#lets just only run once
+					sys.exit(1)
+			except json.decoder.JSONDecodeError:
+				print(ANSI_RED + "Invalid response from Application Manager. Resonse: {}".format(result))
+				sys.exit(1)
+
 	else:
 		print("Invalid mode.")
 		print("Valid modes are: upload, download, remote, local, subscribe")
