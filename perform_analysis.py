@@ -34,6 +34,7 @@ def main():
 			print("Usage: {} remote <model name>".format(sys.argv[0]))
 			sys.exit(1)
 		tmpdir = os.path.join(os.path.dirname(sys.argv[0]), '_tmp')
+		shutil.rmtree(tmpdir)
 		repository.downloadFiles(sys.argv[2], tmpdir)
 		inputdir = enforce_trailing_slash(tmpdir)
 		outputdir = inputdir
@@ -66,7 +67,7 @@ def main():
 			if not 'suscribed_to_project' in reply:
 				raise json.decoder.JSONDecodeError
 		except json.decoder.JSONDecodeError:
-			print(ANSI_RED + "Invalid response from Application Manager. Resonse: {}".format(result))
+			print(ANSI_RED + "Invalid response from Application Manager. Response: {}".format(result))
 			sys.exit(1)
 
 		#TODO: Parse reply properly
