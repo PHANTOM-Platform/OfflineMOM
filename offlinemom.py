@@ -161,9 +161,9 @@ def find_input_models(inputdir):
 		Turn the provided pattern into an absolute filename. Also checks that the deglobbing is unique and
 		outputs an error and exits if not.
 		'''
-		results = glob.glob(pattern);
+		results = glob.glob(pattern)
 		if(len(results) != 1):
-			print("The pattern {} does not refer to a unique file.".format(pattern));
+			print("The pattern {} does not refer to a unique file.".format(pattern))
 			sys.exit(1)
 		else:
 			return results[0]
