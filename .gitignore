@@ -1,7 +1,8 @@
-# Eclipse
+# Editors
 .settings
 .project
 .pydevproject
+.vscode
 
 # OSX
 .DS_Store
