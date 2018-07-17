@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, sys, glob, subprocess, json
+import os, sys, glob, subprocess, json, shutil
 import settings, repository, epsilon
 import websocket
 from settings import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA, ANSI_CYAN, ANSI_END
@@ -69,8 +69,6 @@ def main():
 		except json.decoder.JSONDecodeError:
 			print(ANSI_RED + "Invalid response from Application Manager. Response: {}".format(result))
 			sys.exit(1)
-
-		#TODO: Parse reply properly
 
 		while True:
 			try:

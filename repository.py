@@ -1,4 +1,4 @@
-import requests, os, sys
+import requests, os, sys, json
 import settings
 from settings import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA, ANSI_CYAN, ANSI_END
 
@@ -13,19 +13,29 @@ def getAllFilesOfType(type, path):
 	TODO: Cannot make this work yet
 	"""
 	token = authenticate()
-	url = "http://localhost:{}/query_metadata?project=\"{}\"&source=\"{}\"&filepath=\"{}\"&filename=\"{}\"".format(
+	#url = "http://localhost:{}/query_metadata?project=\"{}\"&source=\"{}\"&Path=\"{}\"&filename=\"{}\"".format(
+	url = "http://localhost:{}/query_metadata?project=\"{}\"&source=\"{}\"&Path=\"{}\"".format(
 		settings.repository_port,
 		settings.repository_projectname,
 		settings.repository_source,
-		"",
-		""
+		"intecs%2F"
 	)
+	print(url)
 	headers = {'Authorization': "OAuth {}".format(token), 'Content-Type': 'multipart/form-data'}
 	rv = requests.get(url, headers=headers)
 	if rv.status_code != 200:
 		print("Could not download file from the repository. Status code: {}\n{}".format(rv.status_code, rv.text))
 		sys.exit(1)
-	print(rv.text)
+	try:
+		reply = json.loads(rv.text)
+		if not 'hits' in reply:
+			raise json.decoder.JSONDecodeError
+	except json.decoder.JSONDecodeError:
+		print(ANSI_RED + "Invalid response from Application Manager. Response: {}".format(rv.text))
+		sys.exit(1)
+
+	print(len(reply['hits']))
+	print(reply)
 
 
 
@@ -81,7 +91,7 @@ def uploadFile(filetoupload, destpath, data_type, checked, websocket_update=True
 			settings.repository_source)
 		url = "http://localhost:{}/update_project_tasks".format(settings.websocket_port)
 		rv = requests.post(url, files={'UploadJSON': uploadjson}, headers=headers)
-		if rv.status_code != 200:
+		if rv.status_code != 200 and rv.status_code != 420:
 			print("Could not update task. Status code: {}\n{}".format(rv.status_code, rv.text))
 			sys.exit(1)
 
@@ -135,5 +145,5 @@ def downloadFiles(srcdir, targetdir):
 			downloadFile(srcdir + "/" + os.path.basename(fn), targetdir + "/" + os.path.basename(fn))
 
 
-#if __name__ == "__main__":
-	#getAllFilesOfType("type", "intecs")
+if __name__ == "__main__":
+	getAllFilesOfType("", "")
