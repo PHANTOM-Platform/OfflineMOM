@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, sys, glob, subprocess, json, shutil
+import os, sys, glob, subprocess, json, shutil, errno
 import settings, repository, epsilon
 import websocket
 from settings import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA, ANSI_CYAN, ANSI_END
@@ -19,7 +19,7 @@ def main():
 		if len(sys.argv) < 6:
 			print("Usage: {} upload <source file> <destpath> <data_type> <checked>".format(sys.argv[0]))
 			sys.exit(1)
-		repository.uploadFile(sys.argv[2], enforce_trailing_slash(sys.argv[3]), sys.argv[4], sys.argv[5])
+		repository.uploadFile(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
 		print("Upload complete.")
 
 	elif sys.argv[1] == 'download':
@@ -111,7 +111,7 @@ def local_mode(inputdir, outputdir, uploadoncedone):
 	try:
 		os.makedirs(outputdir)
 	except OSError as e:
-		if e.errno != os.errno.EEXIST:
+		if e.errno != errno.EEXIST:
 			raise
 
 	#Now run an analysis for each deployment
