@@ -33,7 +33,7 @@ def main():
 		if len(sys.argv) < 3:
 			print("Usage: {} remote <model name>".format(sys.argv[0]))
 			sys.exit(1)
-		tmpdir = os.path.join(os.path.dirname(sys.argv[0]), '_tmp')
+		tmpdir = os.path.join(os.path.dirname(sys.argv[0]), settings.local_temp_folder)
 		shutil.rmtree(tmpdir)
 		repository.downloadFiles(sys.argv[2], tmpdir)
 		inputdir = enforce_trailing_slash(tmpdir)
@@ -52,7 +52,7 @@ def main():
 		if len(sys.argv) < 3:
 			print("Usage: {} subscribe <model name>".format(sys.argv[0]))
 			sys.exit(1)
-		tmpdir = os.path.join(os.path.dirname(sys.argv[0]), '_tmp')
+		tmpdir = os.path.join(os.path.dirname(sys.argv[0]), settings.local_temp_folder)
 		inputdir = enforce_trailing_slash(tmpdir)
 		outputdir = inputdir
 

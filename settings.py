@@ -6,6 +6,7 @@ repository_pass = "1234"
 repository_projectname = "offlinemom"
 repository_source = "user"
 websocket_port = 8500
+local_temp_folder = "_tmp"
 
 ANSI_RED = "\033[1;31m"
 ANSI_GREEN = "\033[1;32m"
