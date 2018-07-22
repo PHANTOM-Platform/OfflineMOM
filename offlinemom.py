@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+"""
+Main entry point for the PHANTOM Offline MOM. For documentation see README.md.
+"""
+
+
 import os, sys, glob, subprocess, json, shutil, errno
 import settings, repository, epsilon
 import websocket
@@ -8,7 +13,29 @@ from epsilon import enforce_trailing_slash
 
 from xml.dom import expatbuilder
 
+tempdir = ""
+
+
 def main():
+	#Check that we can find the MAST executable. It can be set using $MASTEXE
+	if 'MASTEXE' in os.environ: 
+		settings.mast_executable = os.environ['MASTEXE']
+	if epsilon.which(settings.mast_executable) == None:
+		print("{} does not point to the `mast_analysis` executable. Set $MASTEXE.".format(settings.mast_executable))
+		sys.exit(1)
+
+	#Temporary directory can be set by $OFFLINEMOMTEMP or the current directory is used
+	if 'OFFLINEMOMTEMP' in os.environ:
+		tempdir = enforce_trailing_slash(os.environ['OFFLINEMOMTEMP'])
+	else:
+		tempdir = enforce_trailing_slash(os.path.join(
+			os.path.dirname(os.path.realpath(__file__)), 
+			settings.local_temp_folder))
+	
+	#Empty the temp dir
+	if os.path.isdir(tempdir):
+		shutil.rmtree(tempdir)
+	os.mkdir(tempdir)
 
 	if len(sys.argv) < 2:
 		print("Usage: {} [mode] <args for mode>".format(sys.argv[0]))
@@ -16,6 +43,14 @@ def main():
 		sys.exit(1)
 
 	if sys.argv[1] == 'upload':
+		"""
+		Upload a file to the Repository.
+		Arguments:
+			[2] - path to the file to upload
+			[3] - path in the repository to upload to (including filename)
+			[4] - what to set the "data_type" metadata to
+			[5] - what to set the "checked" metadata to
+		"""
 		if len(sys.argv) < 6:
 			print("Usage: {} upload <source file> <destpath> <data_type> <checked>".format(sys.argv[0]))
 			sys.exit(1)
@@ -23,6 +58,12 @@ def main():
 		print("Upload complete.")
 
 	elif sys.argv[1] == 'download':
+		"""
+		Download a file from the Repository.
+		Arguments:
+			[2] - path to the file to download (including filename)
+			[3] - local path (including filename) to save the file as
+		"""
 		if len(sys.argv) < 4:
 			print("Usage: {} download <file> <outputfile>".format(sys.argv[0]))
 			sys.exit(1)
@@ -30,17 +71,36 @@ def main():
 		print("Download complete.")
 
 	elif sys.argv[1] == 'remote':
+		"""
+		Download all files from the repository found in a given path, then perform analysis on it.
+		Arguments:
+			[2] - repository path to the file to download (including filename)
+		"""
 		if len(sys.argv) < 3:
-			print("Usage: {} remote <model name>".format(sys.argv[0]))
+			print("Usage: {} remote <project name>".format(sys.argv[0]))
 			sys.exit(1)
-		tmpdir = os.path.join(os.path.dirname(sys.argv[0]), settings.local_temp_folder)
-		shutil.rmtree(tmpdir)
-		repository.downloadFiles(sys.argv[2], tmpdir)
-		inputdir = enforce_trailing_slash(tmpdir)
-		outputdir = inputdir
-		local_mode(inputdir, outputdir, sys.argv[2])
+		repository.downloadFiles(sys.argv[1], tempdir)
+		local_mode(tempdir, tempdir, False)
+
+	elif sys.argv[1] == 'uncheck':
+		"""
+		Set the "checked" metadata for all deployments to "unchecked"
+		Arguments:
+			[2] - repository path to the deployments
+		"""
+		if len(sys.argv) < 3:
+			print("Usage: {} uncheck <project name>".format(sys.argv[0]))
+			sys.exit(1)
+		print("Setting all deployments in {} to 'unchecked'".format(sys.argv[2]))
+		repository.setAllDeployments(sys.argv[2], False, True)
 
 	elif sys.argv[1] == 'local':
+		"""
+		Analyse a folder of XML files.
+		Arguments:
+			[3] - path to folder to analyse
+			[4] - path to folder to write outputs to
+		"""
 		if len(sys.argv) < 4:
 			print("Usage: {} local <input model dir> <output dir>".format(sys.argv[0]))
 			sys.exit(1)
@@ -49,12 +109,15 @@ def main():
 		local_mode(inputdir, outputdir, None)
 
 	elif sys.argv[1] == 'subscribe':
+		"""
+		Subscribe to a project using the Application Manager. Waits for updates to the project and
+		analyses any unchecked deployments continually.
+		Arguments:
+			[2] - project name to subscribe to
+		"""
 		if len(sys.argv) < 3:
 			print("Usage: {} subscribe <model name>".format(sys.argv[0]))
 			sys.exit(1)
-		tmpdir = os.path.join(os.path.dirname(sys.argv[0]), settings.local_temp_folder)
-		inputdir = enforce_trailing_slash(tmpdir)
-		outputdir = inputdir
 
 		print(ANSI_GREEN + "Subscribing to project {}. Waiting for updates...".format(sys.argv[2]) + ANSI_END)
 		ws = websocket.create_connection("ws://localhost:{}".format(settings.websocket_port))
@@ -74,14 +137,21 @@ def main():
 			try:
 				result = ws.recv()
 				reply = json.loads(result)
-				print(reply)
 				if 'project' in reply and reply['project'] == settings.repository_projectname:
-					print(ANSI_GREEN + "Project has been updated. Checking for updated deployments..." + ANSI_END)
-					repository.downloadFiles(sys.argv[2], tmpdir)
-					local_mode(inputdir, outputdir, sys.argv[2])
-					#TODO: This should loop, but until the metadata extraction is working properly
-					#lets just only run once
-					sys.exit(1)
+					uds = repository.uncheckedDeployments(sys.argv[2])
+					if(len(uds) > 0):
+						print(ANSI_GREEN + "Project has {} unchecked deployment{}...".format(len(uds), "s" if len(uds) > 1 else "") + ANSI_END)
+						print(ANSI_GREEN + "Checking {}...".format(uds[0]['filename']) + ANSI_END)
+
+						#Download the files
+						repository.downloadAllFilesOfType("componentnetwork", sys.argv[2], tempdir)
+						repository.downloadAllFilesOfType("platformdescription", sys.argv[2], tempdir)
+						repository.downloadFile(
+							os.path.join(sys.argv[2], uds[0]['filename']),
+							os.path.join(tempdir, uds[0]['filename']),
+							True, False)
+
+						local_mode(tempdir, tempdir, sys.argv[2])
 			except json.decoder.JSONDecodeError:
 				print(ANSI_RED + "Invalid response from Application Manager. Resonse: {}".format(result))
 				sys.exit(1)
@@ -95,17 +165,27 @@ def main():
 def local_mode(inputdir, outputdir, uploadoncedone):
 	"""
 	Read the model from inputdir, creating all output files into outputdir.
-	If uploadoncedone, then the metadata in the repository is updated for eadh
+	If uploadoncedone, then the metadata in the repository is updated for each
 	deployment tested according to the result.
+
+	inputdir and outputdir can be the same location.
 	"""
 	verbose = False
 
-	#Find eclipse
+	#Find Epsilon
 	eclipse_install = epsilon.find_eclipse_install(settings.default_eclipse_install)
 	print("Using Epsilon install at {}".format(eclipse_install))
 
 	models = find_input_models(inputdir)
-	print(ANSI_CYAN + "Found {} deployment{} to test.".format(len(models['de']), '' if len(models['de']) == 1 else 's') + ANSI_END)
+
+	if len(models['de']) > 1:
+		print(ANSI_CYAN + "Found {} deployment{} to test.".format(len(models['de']), '' if len(models['de']) == 1 else 's') + ANSI_END)
+	else:
+		print(ANSI_CYAN + "Testing model: {} {} {}".format(
+			os.path.basename(models['cn']),
+			os.path.basename(models['pd']),
+			os.path.basename(models['de'][0])
+		) + ANSI_END)
 
 	#Prepare output directory
 	try:
@@ -117,12 +197,12 @@ def local_mode(inputdir, outputdir, uploadoncedone):
 	#Now run an analysis for each deployment
 	found = None
 	for dep in models['de']:
-		print(ANSI_CYAN + "Constructing build file {}{} for deployment {}...".format(outputdir, settings.antfile, dep) + ANSI_END)
+		print(ANSI_CYAN + "Constructing build file {} for deployment {}...".format(settings.antfile, os.path.basename(dep)) + ANSI_END)
 		epsilon.create_ant_file(settings.antfile, models, dep, inputdir, outputdir)
 
 		#Run the Epsilon installation to create output files in outputdir
 		print("Running Epsilon pattern matching and transformations...")
-		epsilon.execute_epsilon(eclipse_install, settings.antfile)
+		epsilon.execute_epsilon(eclipse_install, os.path.join(outputdir, settings.antfile))
 
 		#For each file in outputdir, run a real-time analysis
 		result, failure_reason = perform_analyses(outputdir, verbose)
@@ -218,7 +298,7 @@ def perform_analyses(outputdir, verbose):
 		else:
 			print("Analysing file {}...{}".format(basename, " " * ((maxlen + 1) - len(basename))), end="")
 			if args[0] == 'mast':
-				cmd = ["mast_analysis", "{}".format(" ".join(args[1:])), output]
+				cmd = [settings.mast_executable, "{}".format(" ".join(args[1:])), output]
 				result = subprocess.run(cmd, stdout=subprocess.PIPE)
 				out = str(result.stdout,'utf-8')
 				if verbose:
