@@ -17,15 +17,15 @@ Python 3 probably comes with your operating system. If you are using MacOS and f
 
 	brew install python3
 
-Epsilon should just be downloaded from its website and unarchived to `/opt/eclipse`. If installed anywhere else, then set the environment variable `ECLIPSE` to point to the installation directory.
+Epsilon should be downloaded from its website and unarchived to `/opt/eclipse`. If installed anywhere else, then set the environment variable `$ECLIPSE` to point to the installation directory.
 
 	export ECLIPSE=/my/custom/install/location
 
-MAST can be installed by downloading [the latest binary release](https://mast.unican.es/#downloading), unpacking it, and adding it to your system path. To check this is installed, the tool `mast_analysis` should be on your system path, or you can set the $MASTEXE variable.
+MAST can be installed by downloading [the latest binary release](https://mast.unican.es/#downloading), unpacking it, and adding it to your system path. To check this is installed, the tool `mast_analysis` should be on your system path, or you can set the `$MASTEXE` variable.
 
 	export MASTEXE=/mast/install/location/mast_analysis
 
-You should also ensure that the [PHANTOM Application Manager](https://github.com/PHANTOM-Platform/Application-Manager) is correctly set up and running.
+You should ensure that the [PHANTOM Application Manager](https://github.com/PHANTOM-Platform/Application-Manager) is correctly set up and running.
 
 
 ## Running
