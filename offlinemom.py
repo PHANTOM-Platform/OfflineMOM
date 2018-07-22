@@ -155,6 +155,20 @@ def main():
 			except json.decoder.JSONDecodeError:
 				print(ANSI_RED + "Invalid response from Application Manager. Resonse: {}".format(result))
 				sys.exit(1)
+			
+	elif sys.argv[1] == 'verify':
+		"""
+		Check we can see the other dependencies. (Note MAST is already checked).
+		"""
+		eclipse_install = epsilon.find_eclipse_install(settings.default_eclipse_install)
+		results = glob.glob("{}plugins/org.eclipse.equinox.launcher_*.jar".format(eclipse_install))
+		if(len(results) != 1):
+			print("Cannot find the org.eclipse.equinox.launcher_*.jar in the Eclipse install at \"{}\"".format(eclipse_install))
+			sys.exit(1)
+
+		print("Dependencies found.")
+		sys.exit(0)
+
 
 	else:
 		print("Invalid mode.")

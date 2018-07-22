@@ -88,7 +88,7 @@ def execute_epsilon(eclipse, antfile):
 	'''
 	results = glob.glob("{}plugins/org.eclipse.equinox.launcher_*.jar".format(eclipse))
 	if(len(results) != 1):
-		print("Cannot find the org.eclipse.equinox.launcher_*.jar in the Eclipse install.")
+		print("Cannot find the org.eclipse.equinox.launcher_*.jar in the Eclipse install \"{}\"".format(eclipse))
 		sys.exit(1)
 	jarfile = results[0]
 	cmd = "java -jar {} -application org.eclipse.ant.core.antRunner -buildfile {}".format(jarfile, antfile)
