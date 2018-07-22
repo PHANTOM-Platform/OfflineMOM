@@ -15,5 +15,7 @@ __pycache__
 _tmp
 
 # Examples which cannot be shared
-
 examples/intecs
+
+#Other
+credentials.txt

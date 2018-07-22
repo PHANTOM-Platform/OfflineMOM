@@ -5,7 +5,7 @@ Main entry point for the PHANTOM Offline MOM. For documentation see README.md.
 """
 
 
-import os, sys, glob, subprocess, json, shutil, errno
+import os, sys, glob, subprocess, json, shutil, errno, configparser
 import settings, repository, epsilon
 import websocket
 from settings import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA, ANSI_CYAN, ANSI_END
@@ -17,6 +17,22 @@ tempdir = ""
 
 
 def main():
+	#Read configuration from credentials.txt 
+	if not os.path.isfile("credentials.txt"):
+		createDefaultCredentials()
+		print("credentials.txt does not exist. A default file has been created. This should be edited to contain credentials to access the repository.")
+		sys.exit(1)
+
+	config = configparser.ConfigParser()
+	try:
+		config.read("credentials.txt")
+		settings.repository_port = int(config.get('offlinemom', 'repository_port'))
+		settings.repository_user = config.get('offlinemom', 'repository_user')
+		settings.repository_pass = config.get('offlinemom', 'repository_pass')
+	except:
+		print("Error whilst parsing credentials.txt. Delete the file and rerun and a default file will be generated.")
+		sys.exit(1)
+
 	#Check that we can find the MAST executable. It can be set using $MASTEXE
 	if 'MASTEXE' in os.environ: 
 		settings.mast_executable = os.environ['MASTEXE']
@@ -341,6 +357,19 @@ def summarise_deployment(filename):
 		if len(comp) == 1 and len(proc) == 1:
 			print("\t{} -> {}".format(comp[0].getAttribute('name'), proc[0].getAttribute('name')))
 	print(ANSI_END)
+
+
+def createDefaultCredentials():
+	"""
+	Create the default credentials file.
+	"""
+	with open("credentials.txt", 'w') as cfg:
+			cfg.write("""
+[offlinemom]
+repository_port = 8000
+repository_user = ausername
+repository_pass = 1234
+""")
 
 
 if __name__ == "__main__":

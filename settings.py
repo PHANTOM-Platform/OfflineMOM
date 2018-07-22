@@ -8,9 +8,9 @@ local_temp_folder = "_tmp"
 default_eclipse_install = "/opt/eclipse*"
 
 #Repository login and connection details
-repository_port = 8000
-repository_user = "ian@iangray.me.uk"
-repository_pass = "1234"
+repository_port = 8000 #Read from credentials.txt
+repository_user = "" #Read from credentials.txt
+repository_pass = "" #Read from credentials.txt
 repository_projectname = "offlinemom"
 repository_source = "user"
 
