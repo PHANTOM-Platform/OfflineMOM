@@ -182,6 +182,8 @@ def main():
 			print("Cannot find the org.eclipse.equinox.launcher_*.jar in the Eclipse install at \"{}\"".format(eclipse_install))
 			sys.exit(1)
 
+		repository.authenticate()
+
 		print("Dependencies found.")
 		sys.exit(0)
 

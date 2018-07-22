@@ -4,11 +4,6 @@ from settings import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA,
 from epsilon import enforce_trailing_slash
 
 
-repo_token_url = "http://localhost:{}/login?email={}&pw={}".format(
-	settings.repository_port, settings.repository_user, settings.repository_pass)
-
-
-
 def getAllFilesOfType(type, path):
 	"""
 	Returns a list of metadata hits of the specified data type at the given path
@@ -54,6 +49,9 @@ def authenticate():
 	Authenticate with the repository
 	Returns the OAuth token, or exits if authentication fails.
 	"""
+	repo_token_url = "http://localhost:{}/login?email={}&pw={}".format(
+		settings.repository_port, settings.repository_user, settings.repository_pass)
+
 	try:
 		headers = {'content-type': 'text/plain'}
 		rv = requests.get(repo_token_url, headers=headers)
