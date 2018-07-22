@@ -244,7 +244,7 @@ def uncheckedDeployments(path):
 	rv = getAllFilesOfType("deployment", path)
 	r = []
 	for hit in rv:
-		if 'checked' in hit and hit['checked'] == "no":
+		if not 'checked' in hit or hit['checked'] == "no":
 			r.append(hit)
 	return r
 
