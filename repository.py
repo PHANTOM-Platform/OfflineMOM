@@ -1,7 +1,25 @@
-import requests, os, sys, json, io
+import requests, os, sys, json, io, configparser
 import settings
 from settings import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA, ANSI_CYAN, ANSI_END
 from epsilon import enforce_trailing_slash
+
+
+def readCredentials():
+	#Read configuration from credentials.txt 
+	if not os.path.isfile("credentials.txt"):
+		createDefaultCredentials()
+		print("credentials.txt does not exist. A default file has been created. This should be edited to contain credentials to access the repository.")
+		sys.exit(1)
+
+	config = configparser.ConfigParser()
+	try:
+		config.read("credentials.txt")
+		settings.repository_port = int(config.get('offlinemom', 'repository_port'))
+		settings.repository_user = config.get('offlinemom', 'repository_user')
+		settings.repository_pass = config.get('offlinemom', 'repository_pass')
+	except:
+		print("Error whilst parsing credentials.txt. Delete the file and rerun and a default file will be generated.")
+		sys.exit(1)
 
 
 def getAllFilesOfType(type, path):
@@ -249,6 +267,23 @@ def uncheckedDeployments(path):
 	return r
 
 
+def createDefaultCredentials():
+	"""
+	Create the default credentials file.
+	"""
+	with open("credentials.txt", 'w') as cfg:
+			cfg.write("""
+[offlinemom]
+repository_port = 8000
+repository_user = ausername
+repository_pass = 1234
+""")
+
+
+
 if __name__ == "__main__":
-	tmpdir = os.path.join(os.path.dirname(sys.argv[0]), settings.local_temp_folder)
-	downloadAllFilesOfType("componentnetwork", "intecs", tmpdir)
+	readCredentials()
+	#tmpdir = os.path.join(os.path.dirname(sys.argv[0]), settings.local_temp_folder)
+	#downloadAllFilesOfType("componentnetwork", "intecs", tmpdir)
+	for i in getAllFilesOfType("deployment", "intecs"):
+		print(i)

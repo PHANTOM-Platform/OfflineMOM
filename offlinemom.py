@@ -4,8 +4,7 @@
 Main entry point for the PHANTOM Offline MOM. For documentation see README.md.
 """
 
-
-import os, sys, glob, subprocess, json, shutil, errno, configparser
+import os, sys, glob, subprocess, json, shutil, errno
 import settings, repository, epsilon
 import websocket
 from settings import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA, ANSI_CYAN, ANSI_END
@@ -13,25 +12,8 @@ from epsilon import enforce_trailing_slash
 
 from xml.dom import expatbuilder
 
-tempdir = ""
-
-
 def main():
-	#Read configuration from credentials.txt 
-	if not os.path.isfile("credentials.txt"):
-		createDefaultCredentials()
-		print("credentials.txt does not exist. A default file has been created. This should be edited to contain credentials to access the repository.")
-		sys.exit(1)
-
-	config = configparser.ConfigParser()
-	try:
-		config.read("credentials.txt")
-		settings.repository_port = int(config.get('offlinemom', 'repository_port'))
-		settings.repository_user = config.get('offlinemom', 'repository_user')
-		settings.repository_pass = config.get('offlinemom', 'repository_pass')
-	except:
-		print("Error whilst parsing credentials.txt. Delete the file and rerun and a default file will be generated.")
-		sys.exit(1)
+	repository.readCredentials()
 
 	#Check that we can find the MAST executable. It can be set using $MASTEXE
 	if 'MASTEXE' in os.environ: 
@@ -135,42 +117,7 @@ def main():
 			print("Usage: {} subscribe <model name>".format(sys.argv[0]))
 			sys.exit(1)
 
-		print(ANSI_GREEN + "Subscribing to project {}. Waiting for updates...".format(sys.argv[2]) + ANSI_END)
-		ws = websocket.create_connection("ws://localhost:{}".format(settings.websocket_port))
-		req = "{{\"user\":\"{}\" , \"project\":\"{}\"}}".format(settings.repository_user, settings.repository_projectname)
-		ws.send(req)
-		result = ws.recv()
-
-		try:
-			reply = json.loads(result)
-			if not 'suscribed_to_project' in reply:
-				raise json.decoder.JSONDecodeError
-		except json.decoder.JSONDecodeError:
-			print(ANSI_RED + "Invalid response from Application Manager. Response: {}".format(result))
-			sys.exit(1)
-
-		while True:
-			try:
-				result = ws.recv()
-				reply = json.loads(result)
-				if 'project' in reply and reply['project'] == settings.repository_projectname:
-					uds = repository.uncheckedDeployments(sys.argv[2])
-					if(len(uds) > 0):
-						print(ANSI_GREEN + "Project has {} unchecked deployment{}...".format(len(uds), "s" if len(uds) > 1 else "") + ANSI_END)
-						print(ANSI_GREEN + "Checking {}...".format(uds[0]['filename']) + ANSI_END)
-
-						#Download the files
-						repository.downloadAllFilesOfType("componentnetwork", sys.argv[2], tempdir)
-						repository.downloadAllFilesOfType("platformdescription", sys.argv[2], tempdir)
-						repository.downloadFile(
-							os.path.join(sys.argv[2], uds[0]['filename']),
-							os.path.join(tempdir, uds[0]['filename']),
-							True, False)
-
-						local_mode(tempdir, tempdir, sys.argv[2])
-			except json.decoder.JSONDecodeError:
-				print(ANSI_RED + "Invalid response from Application Manager. Resonse: {}".format(result))
-				sys.exit(1)
+		subscribe(sys.argv[2], tempdir)
 			
 	elif sys.argv[1] == 'verify':
 		"""
@@ -194,11 +141,18 @@ def main():
 		sys.exit(1)
 
 
-def local_mode(inputdir, outputdir, uploadoncedone):
+def local_mode(inputdir, outputdir, uploadoncedone, models = None):
 	"""
 	Read the model from inputdir, creating all output files into outputdir.
 	If uploadoncedone, then the metadata in the repository is updated for each
 	deployment tested according to the result.
+
+	models should be a dictionary of the form:
+	{ 'cn': 'filename.xml', 'pd': 'filename.xml', ['de': 'filename.xml'] }
+	Otherwise the input directory will be searched for files that start with 'cn', 'pd', and 'de' respectively and will
+	fail if they are not found, and apart from deployments, unique.
+	
+	If multiple deployments are found/specified they are all tested.
 
 	inputdir and outputdir can be the same location.
 	"""
@@ -208,7 +162,8 @@ def local_mode(inputdir, outputdir, uploadoncedone):
 	eclipse_install = epsilon.find_eclipse_install(settings.default_eclipse_install)
 	print("Using Epsilon install at {}".format(eclipse_install))
 
-	models = find_input_models(inputdir)
+	if models == None:
+		models = find_input_models(inputdir)
 
 	if len(models['de']) > 1:
 		print(ANSI_CYAN + "Found {} deployment{} to test.".format(len(models['de']), '' if len(models['de']) == 1 else 's') + ANSI_END)
@@ -242,7 +197,10 @@ def local_mode(inputdir, outputdir, uploadoncedone):
 			print(ANSI_GREEN + "Cannot invalidate deployment {}".format(dep) + ANSI_END)
 			found = dep
 			summarise_deployment(dep)
-			break
+			if uploadoncedone:
+				print(ANSI_YELLOW + "Updating metadata of validated deployment {} in repository".format(dep) + ANSI_END)
+				repository.uploadFile(dep, uploadoncedone, "deployment", "yes")
+				print(ANSI_YELLOW + "Done." + ANSI_END)
 		else:
 			print(ANSI_RED + "Deployment {} invalidated by test {}.".format(dep, failure_reason) + ANSI_END)
 			if uploadoncedone:
@@ -252,11 +210,56 @@ def local_mode(inputdir, outputdir, uploadoncedone):
 	if found == None:
 		print(ANSI_RED + "No valid deployments found." + ANSI_END)
 
-	if uploadoncedone:
-		print(ANSI_YELLOW + "Updating metadata of validated deployment {} in repository".format(dep) + ANSI_END)
-		repository.uploadFile(dep, uploadoncedone, "deployment", "yes")
-		print(ANSI_YELLOW + "Done." + ANSI_END)
 
+def subscribe(project, tempdir):
+	"""
+	Subscribe to a project using the Application Manager. Waits for updates to the project and
+	analyses any unchecked deployments continually.
+	"""
+	def checkForUDs(project, tempdir):
+		import time
+		time.sleep(1) #We currently seem to have to give the metadata a little time to update inside the repository
+		uds = repository.uncheckedDeployments(project)
+		if(len(uds) > 0):
+			print(ANSI_GREEN + "Project has {} unchecked deployment{}...".format(len(uds), "s" if len(uds) > 1 else "") + ANSI_END)
+			print(ANSI_GREEN + "Checking {}...".format(uds[0]['filename']) + ANSI_END)
+
+			#Download the files
+			repository.downloadAllFilesOfType("componentnetwork", project, tempdir)
+			repository.downloadAllFilesOfType("platformdescription", project, tempdir)
+			repository.downloadFile(
+				os.path.join(project, uds[0]['filename']),
+				os.path.join(tempdir, uds[0]['filename']),
+				True, False)
+
+			local_mode(tempdir, tempdir, project)
+
+	print(ANSI_GREEN + "Subscribing to project {}. Waiting for updates...".format(project) + ANSI_END)
+
+	ws = websocket.create_connection("ws://localhost:{}".format(settings.websocket_port))
+	req = "{{\"user\":\"{}\" , \"project\":\"{}\"}}".format(settings.repository_user, settings.repository_projectname)
+	ws.send(req)
+	result = ws.recv()
+	try:
+		reply = json.loads(result)
+		if not 'suscribed_to_project' in reply:
+			raise json.decoder.JSONDecodeError
+	except json.decoder.JSONDecodeError:
+		print(ANSI_RED + "Invalid response from Application Manager. Response: {}".format(result))
+		sys.exit(1)
+
+	#Run a first check regardless of response from the websocket
+	checkForUDs(project, tempdir)
+
+	while True:
+		try:
+			result = ws.recv()
+			reply = json.loads(result)
+			if 'project' in reply and reply['project'] == settings.repository_projectname:
+				checkForUDs(project, tempdir)
+		except json.decoder.JSONDecodeError:
+			print(ANSI_RED + "Invalid response from Application Manager. Response: {}".format(result))
+			sys.exit(1)
 
 
 def find_input_models(inputdir):
@@ -270,7 +273,7 @@ def find_input_models(inputdir):
 	'''
 	def deglob_input_models(pattern):
 		'''
-		Turn the provided pattern into an absolute filename. Also checks that the deglobbing is unique and
+		Turn the provided pattern into an absolute filename. Also checks that the de-globbing is unique and
 		outputs an error and exits if not.
 		'''
 		results = glob.glob(pattern)
@@ -302,7 +305,7 @@ def perform_analyses(outputdir, verbose):
 	passed = True
 	failure_reason = ""
 
-	#Determine max length of maching filenames
+	#Determine max length of matching filenames
 	maxlen = 0
 	for output in outputs:
 		l = len(os.path.splitext(os.path.basename(output))[0])
@@ -360,18 +363,6 @@ def summarise_deployment(filename):
 			print("\t{} -> {}".format(comp[0].getAttribute('name'), proc[0].getAttribute('name')))
 	print(ANSI_END)
 
-
-def createDefaultCredentials():
-	"""
-	Create the default credentials file.
-	"""
-	with open("credentials.txt", 'w') as cfg:
-			cfg.write("""
-[offlinemom]
-repository_port = 8000
-repository_user = ausername
-repository_pass = 1234
-""")
 
 
 if __name__ == "__main__":
