@@ -225,14 +225,25 @@ def subscribe(project, tempdir):
 			print(ANSI_GREEN + "Checking {}...".format(uds[0]['filename']) + ANSI_END)
 
 			#Download the files
-			repository.downloadAllFilesOfType("componentnetwork", project, tempdir)
-			repository.downloadAllFilesOfType("platformdescription", project, tempdir)
+			models = {} #This will tell local_mode which XML files are of which type
+			cns = repository.downloadAllFilesOfType("componentnetwork", project, tempdir)
+			if len(cns) != 1:
+				print(ANSI_RED + "Multiple files of type 'componentnetwork' found at path {} when only one was expected.".format(project) + ANSI_END)
+				sys.exit(1)
+			models['cn'] = os.path.join(tempdir, cns[0])
+			pds = repository.downloadAllFilesOfType("platformdescription", project, tempdir)
+			if len(pds) != 1:
+				print(ANSI_RED + "Multiple files of type 'platformdescription' found at path {} when only one was expected.".format(project) + ANSI_END)
+				sys.exit(1)
+			models['pd'] = os.path.join(tempdir, pds[0])
+			models['de'] = [os.path.join(tempdir, uds[0]['filename'])]
+
 			repository.downloadFile(
 				os.path.join(project, uds[0]['filename']),
 				os.path.join(tempdir, uds[0]['filename']),
 				True, False)
 
-			local_mode(tempdir, tempdir, project)
+			local_mode(tempdir, tempdir, project, models=models)
 
 	print(ANSI_GREEN + "Subscribing to project {}. Waiting for updates...".format(project) + ANSI_END)
 

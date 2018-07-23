@@ -57,10 +57,12 @@ def downloadAllFilesOfType(type, path, outputdir):
 	"""
 	Download all files that match a certain type and save them in the outputdir
 	"""
+	rv = []
 	fls = getAllFilesOfType(type, path)
 	for f in fls:
 		downloadFile(enforce_trailing_slash(path) + f['filename'], enforce_trailing_slash(outputdir) + f['filename'], True, False)
-
+		rv.append(f['filename'])
+	return rv
 
 def authenticate():
 	"""
