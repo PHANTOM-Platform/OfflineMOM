@@ -192,7 +192,7 @@ def local_mode(inputdir, outputdir, uploadoncedone, models = None):
 		epsilon.execute_epsilon(eclipse_install, os.path.join(outputdir, settings.antfile))
 
 		#For each file in outputdir, run a real-time analysis
-		result, failure_reason = perform_analyses(outputdir, verbose)
+		result, failure_reason, output = perform_analyses(outputdir, verbose)
 		if result == True:
 			print(ANSI_GREEN + "Cannot invalidate deployment {}".format(dep) + ANSI_END)
 			found = dep
@@ -206,6 +206,9 @@ def local_mode(inputdir, outputdir, uploadoncedone, models = None):
 			if uploadoncedone:
 				print(ANSI_YELLOW + "Updating metadata of invalidated deployment {} in repository".format(dep) + ANSI_END)
 				repository.uploadFile(dep, uploadoncedone, "deployment", failure_reason)
+
+				print(ANSI_YELLOW + failure_reason + ANSI_END)
+				repository.uploadFileContents(output, failure_reason, uploadoncedone, "analysis_output", "", False)
 
 	if found == None:
 		print(ANSI_RED + "No valid deployments found." + ANSI_END)
@@ -309,12 +312,13 @@ def find_input_models(inputdir):
 
 def perform_analyses(outputdir, verbose):
 	'''
-	Run all the analysis files. Returns (True, "") if all pass, or (False, "analysis") if any fail,
-	where "analysis" is the name of the analysis which caused the failure.
+	Run all the analysis files. Returns (True, "", output) if all pass, or (False, "analysis", output) if any fail,
+	where "analysis" is the name of the analysis which caused the failure and output is the full output from the tool.
 	'''
 	outputs = glob.glob('{}/*.txt'.format(outputdir))
 	passed = True
 	failure_reason = ""
+	failure_contents = ""
 
 	#Determine max length of matching filenames
 	maxlen = 0
@@ -358,9 +362,10 @@ def perform_analyses(outputdir, verbose):
 						print(ANSI_RED + "System unschedulable!" + ANSI_END)
 						passed = False
 						failure_reason = basename
+						failure_contents = out
 			else:
 				print("File {} requests an unknown analysis tool: {}. Skipped.".format(output, args[0]))
-	return (passed, failure_reason)
+	return (passed, failure_reason, failure_contents)
 
 
 def summarise_deployment(filename):

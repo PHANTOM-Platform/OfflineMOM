@@ -84,20 +84,24 @@ def authenticate():
 		sys.exit(1)
 
 
-def uploadFile(filetoupload, destpath, data_type, checked, websocket_update=True):
+
+def uploadFileContents(filecontents, filename, destpath, data_type, checked, websocket_update=True):
 	"""
-	Upload the given file to the repository. If websocket_update then the
+	Upload the given file contents to the repository as filename at the given path.
+	"""
+	stringAsFile = io.StringIO(filecontents)
+	return upload(stringAsFile, filename, destpath, data_type, checked, websocket_update)
+
+
+
+def upload(filetoupload, filename, destpath, data_type, checked, websocket_update):
+	"""
+	Upload the given file object to the repository. If websocket_update then the
 	metadata for the given file is updated, which will notify all subscribers
 	"""
 	token = authenticate()
-	if not os.path.isfile(filetoupload):
-		print("{} is not a valid file.".format(filetoupload))
-		sys.exit(1)
 	url = "http://localhost:{}/upload?DestFileName={}&Path={}".format(
-		settings.repository_port,
-		os.path.basename(filetoupload),
-		destpath
-	)
+		settings.repository_port, filename, destpath)
 
 	headers = {'Authorization': "OAuth {}".format(token)}
 	uploadjson = "{{\"project\": \"{}\", \"source\": \"{}\", \"data_type\": \"{}\", \"checked\": \"{}\"}}".format(
@@ -105,7 +109,7 @@ def uploadFile(filetoupload, destpath, data_type, checked, websocket_update=True
 		settings.repository_source,
 		data_type, checked)
 	files = {
-		'UploadFile': open(filetoupload, 'rb'),
+		'UploadFile': filetoupload,
 		'UploadJSON': uploadjson
 	}
 	rv = requests.post(url, files=files, headers=headers)
@@ -115,6 +119,19 @@ def uploadFile(filetoupload, destpath, data_type, checked, websocket_update=True
 
 	if websocket_update:
 		websocketUpdate(headers, settings.repository_projectname)
+
+
+
+def uploadFile(filetoupload, destpath, data_type, checked, websocket_update=True):
+	"""
+	Upload the given file to the repository. "filetoupload" must be a path to a valid file.
+	"""
+	if not os.path.isfile(filetoupload):
+		print("{} is not a valid file.".format(filetoupload))
+		sys.exit(1)
+	filename = os.path.basename(filetoupload)
+	return upload(open(filetoupload, 'rb'), filename, destpath, data_type, checked, websocket_update)
+
 
 
 def downloadFile(filetodownload, destfile, save=True, verbose=True):
