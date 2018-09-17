@@ -134,10 +134,15 @@ def main():
 		print("Dependencies found.")
 		sys.exit(0)
 
+	elif sys.argv[1] == 'listdeps':
+		"""
+		List all deployments in the given path.
+		"""
+		repository.listDeployments(sys.argv[2])
 
 	else:
 		print("Invalid mode.")
-		print("Valid modes are: upload, download, remote, local, subscribe")
+		print("Valid modes are: upload, download, remote, local, subscribe, uncheck")
 		sys.exit(1)
 
 

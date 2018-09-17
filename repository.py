@@ -285,6 +285,22 @@ def uncheckedDeployments(path):
 			r.append(hit)
 	return r
 
+def listDeployments(path):
+	"""
+	Pretty print the deployments
+	"""
+	rv = getAllFilesOfType("deployment", path)
+	r = []
+	print("All deployments:")
+	for hit in rv:
+		if(hit['checked'] == 'no'):
+			print("\t" + hit['filename'] + ": unchecked")
+		else:
+			if(hit['checked'] == 'yes'):
+				print("\t" + hit['filename'] + ": Passes all checks")
+			else:
+				print("\t" + hit['filename'] + ": Fails on test '" + hit['checked'] + "'")
+
 
 def createDefaultCredentials():
 	"""
