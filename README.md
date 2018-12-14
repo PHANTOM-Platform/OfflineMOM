@@ -13,6 +13,10 @@ This tool requires:
  * [Epsilon](http://www.eclipse.org/epsilon/download/)
  * [MAST](https://mast.unican.es/)
 
+The tool uses the Python module `websocket-client`, which can be installed with:
+
+    pip install websocket-client
+
 Python 3 probably comes with your operating system. If you are using MacOS and find you do not have Python 3, it is easy to install using Homebrew. [Install Homebrew]/(https://brew.sh/) and then issue the following install command:
 
 	brew install python3
@@ -24,6 +28,12 @@ Epsilon should be downloaded from its website and unarchived to `/opt/eclipse`. 
 MAST can be installed by downloading [the latest binary release](https://mast.unican.es/#downloading), unpacking it, and adding it to your system path. To check this is installed, the tool `mast_analysis` should be on your system path, or you can set the `$MASTEXE` variable.
 
 	export MASTEXE=/mast/install/location/mast_analysis
+
+As MAST is a 32-bit application, you may have to install your operating system's 32-bit libraries. This is different for each OS, but for example, is achieved on a modern Ubuntu with the following:
+
+	dpkg --add-architecture i386
+	apt-get update
+	apt-get install libc6:i386 libstdc++6:i386
 
 You should ensure that the [PHANTOM Application Manager](https://github.com/PHANTOM-Platform/Application-Manager) is correctly set up and running.
 
