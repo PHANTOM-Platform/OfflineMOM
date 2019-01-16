@@ -8,13 +8,15 @@ local_temp_folder = "_tmp"
 default_eclipse_install = "/opt/eclipse*"
 
 #Repository login and connection details
+repository_host = "localhost"
 repository_port = 8000 #Read from credentials.txt
 repository_user = "" #Read from credentials.txt
 repository_pass = "" #Read from credentials.txt
 repository_projectname = "offlinemom"
 repository_source = "user"
 
-#The port number used by the websockets of the Application Manager
+#The host and port number used by the websockets of the Application Manager
+websocket_host = "localhost"
 websocket_port = 8500
 
 #The path to the MAST executable

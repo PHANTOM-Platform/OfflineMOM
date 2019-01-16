@@ -255,7 +255,7 @@ def subscribe(project, tempdir):
 
 	print(ANSI_GREEN + "Subscribing to project {}. Waiting for updates...".format(project) + ANSI_END)
 
-	ws = websocket.create_connection("ws://localhost:{}".format(settings.websocket_port))
+	ws = websocket.create_connection("ws://{}:{}".format(settings.websocket_host, settings.websocket_port))
 	req = "{{\"user\":\"{}\" , \"project\":\"{}\"}}".format(settings.repository_user, settings.repository_projectname)
 	ws.send(req)
 	result = ws.recv()

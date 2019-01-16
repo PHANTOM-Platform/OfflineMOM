@@ -27,7 +27,8 @@ def getAllFilesOfType(type, path):
 	Returns a list of metadata hits of the specified data type at the given path
 	"""
 	token = authenticate()
-	url = "http://localhost:{}/query_metadata?project=\"{}\"&source=\"{}\"&Path=\"{}\"".format(
+	url = "http://{}:{}/query_metadata?project=\"{}\"&source=\"{}\"&Path=\"{}\"".format(
+		settings.repository_host,
 		settings.repository_port,
 		settings.repository_projectname,
 		settings.repository_source,
@@ -67,8 +68,8 @@ def authenticate():
 	Authenticate with the repository
 	Returns the OAuth token, or exits if authentication fails.
 	"""
-	repo_token_url = "http://localhost:{}/login?email={}&pw={}".format(
-		settings.repository_port, settings.repository_user, settings.repository_pass)
+	repo_token_url = "http://{}:{}/login?email={}&pw={}".format(
+		settings.repository_host, settings.repository_port, settings.repository_user, settings.repository_pass)
 
 	try:
 		headers = {'content-type': 'text/plain'}
@@ -98,8 +99,8 @@ def upload(filetoupload, filename, destpath, data_type, checked, websocket_updat
 	metadata for the given file is updated, which will notify all subscribers
 	"""
 	token = authenticate()
-	url = "http://localhost:{}/upload?project={}&source={}&Path={}&DestFileName={}".format(
-		settings.repository_port, settings.repository_projectname, settings.repository_source, destpath, filename)
+	url = "http://{}:{}/upload?project={}&source={}&Path={}&DestFileName={}".format(
+		settings.repository_host, settings.repository_port, settings.repository_projectname, settings.repository_source, destpath, filename)
 
 	headers = {'Authorization': "OAuth {}".format(token)}
 	uploadjson = "{{\"project\": \"{}\", \"source\": \"{}\", \"data_type\": \"{}\", \"checked\": \"{}\"}}".format(
@@ -138,7 +139,8 @@ def downloadFile(filetodownload, destfile, save=True, verbose=True):
 	"""
 	token = authenticate()
 
-	url = "http://localhost:{}/download?project=\"{}\"&source=\"{}\"&filepath={}&filename={}".format(
+	url = "http://{}:{}/download?project=\"{}\"&source=\"{}\"&filepath={}&filename={}".format(
+		settings.repository_host,
 		settings.repository_port,
 		settings.repository_projectname,
 		settings.repository_source,
@@ -165,7 +167,8 @@ def downloadFiles(srcdir, targetdir):
 	Hidden files (that begin with a .) are not downloaded.
 	"""
 	token = authenticate()
-	url = "http://localhost:{}/downloadlist?project=\"{}\"&source=\"{}\"&filepath={}".format(
+	url = "http://{}:{}/downloadlist?project=\"{}\"&source=\"{}\"&filepath={}".format(
+		settings.repository_host,
 		settings.repository_port,
 		settings.repository_projectname,
 		settings.repository_source,
@@ -196,7 +199,8 @@ def getMetadata(path, filename):
 	This will usually only be one hit.
 	"""
 	token = authenticate()
-	url = "http://localhost:{}/query_metadata?project=\"{}\"&source=\"{}\"&Path=\"{}\"&filename=\"{}\"".format(
+	url = "http://{}:{}/query_metadata?project=\"{}\"&source=\"{}\"&Path=\"{}\"&filename=\"{}\"".format(
+		settings.repository_host,
 		settings.repository_port,
 		settings.repository_projectname,
 		settings.repository_source,
@@ -225,7 +229,7 @@ def websocketUpdate(headers, project):
 	uploadjson = "{{\"project\": \"{}\", \"source\": \"{}\"}}".format(
 		project,
 		settings.repository_source)
-	url = "http://localhost:{}/update_project_tasks".format(settings.websocket_port)
+	url = "http://{}:{}/update_project_tasks".format(settings.websocket_host, settings.websocket_port)
 	rv = requests.post(url, files={'UploadJSON': uploadjson}, headers=headers)
 	if rv.status_code != 200 and rv.status_code != 420:
 		print("Could not update task. Status code: {}\n{}".format(rv.status_code, rv.text))
@@ -241,7 +245,7 @@ def setMetadata(filename, path, uploadjson, websocket_update=True):
 	filedata = downloadFile(enforce_trailing_slash(path) + filename, None, False)
 
 	token = authenticate()
-	url = "http://localhost:{}/upload?DestFileName={}&Path={}".format(settings.repository_port, filename, path)
+	url = "http://{}:{}/upload?DestFileName={}&Path={}".format(settings.repository_host, settings.repository_port, filename, path)
 
 	headers = {'Authorization': "OAuth {}".format(token)}
 	files = {'UploadFile': io.StringIO(filedata), 'UploadJSON': uploadjson}
