@@ -40,14 +40,12 @@ def getAllFilesOfType(type, path):
 		sys.exit(1)
 	try:
 		reply = json.loads(rv.text)
-		if not 'hits' in reply:
-			raise json.decoder.JSONDecodeError
 	except json.decoder.JSONDecodeError:
 		print(ANSI_RED + "Invalid response from Application Manager. Response: {}".format(rv.text))
 		sys.exit(1)
 
 	rv = []
-	for hit in reply['hits']:
+	for hit in reply:
 		if hit['data_type'] == type:
 			rv.append(hit)
 	return rv
