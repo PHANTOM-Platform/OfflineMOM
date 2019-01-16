@@ -98,8 +98,8 @@ def upload(filetoupload, filename, destpath, data_type, checked, websocket_updat
 	metadata for the given file is updated, which will notify all subscribers
 	"""
 	token = authenticate()
-	url = "http://localhost:{}/upload?DestFileName={}&Path={}".format(
-		settings.repository_port, filename, destpath)
+	url = "http://localhost:{}/upload?project={}&source={}&Path={}&DestFileName={}".format(
+		settings.repository_port, settings.repository_projectname, settings.repository_source, destpath, filename)
 
 	headers = {'Authorization': "OAuth {}".format(token)}
 	uploadjson = "{{\"project\": \"{}\", \"source\": \"{}\", \"data_type\": \"{}\", \"checked\": \"{}\"}}".format(
