@@ -78,7 +78,7 @@ def main():
 			print("Usage: {} remote <project name>".format(sys.argv[0]))
 			sys.exit(1)
 		repository.downloadFiles(sys.argv[1], tempdir)
-		local_mode(tempdir, tempdir, False)
+		local_mode(tempdir, tempdir, False, False)
 
 	elif sys.argv[1] == 'uncheck':
 		"""
@@ -97,14 +97,12 @@ def main():
 		Analyse a folder of XML files.
 		Arguments:
 			[3] - path to folder to analyse
-			[4] - path to folder to write outputs to
 		"""
-		if len(sys.argv) < 4:
-			print("Usage: {} local <input model dir> <output dir>".format(sys.argv[0]))
+		if len(sys.argv) < 3:
+			print("Usage: {} local <input model dir>".format(sys.argv[0]))
 			sys.exit(1)
 		inputdir = enforce_trailing_slash(sys.argv[2])
-		outputdir = enforce_trailing_slash(sys.argv[3])
-		local_mode(inputdir, outputdir, None)
+		local_mode(inputdir, inputdir, False, True)
 
 	elif sys.argv[1] == 'subscribe':
 		"""
@@ -146,7 +144,7 @@ def main():
 		sys.exit(1)
 
 
-def local_mode(inputdir, outputdir, uploadoncedone, models = None):
+def local_mode(inputdir, outputdir, uploadoncedone, localmode, models = None):
 	"""
 	Read the model from inputdir, creating all output files into outputdir.
 	If uploadoncedone, then the metadata in the repository is updated for each
@@ -206,6 +204,9 @@ def local_mode(inputdir, outputdir, uploadoncedone, models = None):
 				print(ANSI_YELLOW + "Updating metadata of validated deployment {} in repository".format(dep) + ANSI_END)
 				repository.uploadFile(dep, uploadoncedone, "deployment", "yes")
 				print(ANSI_YELLOW + "Done." + ANSI_END)
+			if localmode:
+				updateLocalJSON(os.path.join(outputdir, os.path.splitext(dep)[0] + ".json"), "yes")
+
 		else:
 			print(ANSI_RED + "Deployment {} invalidated by test {}.".format(dep, failure_reason) + ANSI_END)
 			if uploadoncedone:
@@ -214,9 +215,26 @@ def local_mode(inputdir, outputdir, uploadoncedone, models = None):
 
 				print(ANSI_YELLOW + failure_reason + ANSI_END)
 				repository.uploadFileContents(output, failure_reason, uploadoncedone, "analysis_output", "", False)
+			if localmode:
+				updateLocalJSON(os.path.join(outputdir, os.path.splitext(dep)[0] + ".json"), failure_reason)
 
 	if found == None:
 		print(ANSI_RED + "No valid deployments found." + ANSI_END)
+
+
+def updateLocalJSON(deploymentName, checkedvalue):
+	if os.path.exists(deploymentName):
+		with open(deploymentName) as f:
+			data = json.load(f)
+			if not 'MOM' in data and 'checked' in data['MOM']:
+				print("Metadata json for deployment is not in the correct format.")
+				return
+			data['MOM']['checked'] = checkedvalue
+		
+		with open(deploymentName, 'w') as outf:
+			json.dump(data, outf)
+	else:
+		print("No metadata json for deployment found. Metadata not updated.")
 
 
 def subscribe(project, tempdir):
@@ -251,7 +269,7 @@ def subscribe(project, tempdir):
 				os.path.join(tempdir, uds[0]['filename']),
 				True, False)
 
-			local_mode(tempdir, tempdir, project, models=models)
+			local_mode(tempdir, tempdir, project, False, models=models)
 
 	print(ANSI_GREEN + "Subscribing to project {}. Waiting for updates...".format(project) + ANSI_END)
 
