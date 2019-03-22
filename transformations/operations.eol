@@ -1,6 +1,10 @@
 //Does the mapping have a specific scheduling parameter?
 operation DE!MappingType hasSP(name : String) : Boolean {
-    return self.schedulingParam.exists(sp | sp.name = name);
+    if (self.hasProperty("schedulingParam")) {
+        return self.schedulingParam.exists(sp | sp.name = name);
+    } else {
+        return false;
+    }
 }
 
 //Fetch the value of a named scheduling parameter from a mapping
@@ -39,10 +43,10 @@ operation CN!ComponentType getNFR(name : String) : String {
 //The name is supposed to be stored in "cpuName" but the mapping has a name and so this could be used. 
 //If cpuName is not defined, use name.
 operation DE!MappingType getCpuName() : String {
-	if (self.processor.hasProperty("cpuName") and not (self.processor.cpuName.asString() = "")) {
-		return self.processor.cpuName;
-	} else if (self.processor.hasProperty("name")) {
-		return self.processor.name;
+	if (self.cPU.hasProperty("processorName") and not (self.cPU.processorName.asString() = "")) {
+		return self.cPU.processorName;
+	} else if (self.cPU.hasProperty("name")) {
+		return self.cPU.name;
 	} else {
 		return "";
 	}

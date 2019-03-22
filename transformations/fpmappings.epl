@@ -5,14 +5,14 @@ import "operations.eol";
  */
 pattern FPComponentMappings
 	mapping : DE!MappingType,
-	cpu : PD!CpuType,
+	cpu : PD!ProcessorType,
 	component : CN!ComponentType
 {
 	match {
 		if (mapping.component.hasProperty("name") and
 		mapping.component.name = component.name and
 		mapping.type.asString() = "processing" and
-		mapping.getCpuName() = cpu.name and
+		mapping.cPU.processorName = cpu.name and
 		mapping.hasSP("priority") and
 		mapping.hasSP("period")) {
 			return true;
@@ -29,9 +29,9 @@ pattern FPComponentMappings
  * or mBTEstimatedComputationTime.
  */
 pattern CPUsWithFPComponents
-	cpu : PD!CpuType,
+	cpu : PD!ProcessorType,
 	mappings : DE!MappingType[*] from:
-		DE!MappingType.all.select(m | m.type.asString() = "processing" and m.getCpuName() = cpu.name),
+		DE!MappingType.all.select(m | m.type.asString() = "processing" and m.cPU.processorName = cpu.name),
 	components : CN!ComponentType[*] from:
 		CN!ComponentType.all
 			.select(c | c.mFMonitoredComputationTime.value1 > 0 or c.mFMonitoredComputationTime.value <> "")
