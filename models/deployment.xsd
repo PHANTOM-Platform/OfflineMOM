@@ -1,11 +1,12 @@
-<xs:schema xmlns="DE" targetNamespace="DE" xmlns:xs="http://www.w3.org/2001/XMLSchema" attributeFormDefault="unqualified" elementFormDefault="qualified">
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<xs:schema xmlns="DE" xmlns:xs="http://www.w3.org/2001/XMLSchema" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="DE">
   <xs:element name="component">
     <xs:complexType>
       <xs:simpleContent>
         <xs:extension base="xs:string">
-          <xs:attribute type="xs:string" name="name" use="required"/>
-          <xs:attribute type="xs:byte" name="comp_id" use="required"/>
-          <xs:attribute type="xs:byte" name="subcomponents" use="required"/>
+          <xs:attribute name="name" type="xs:string" use="required"/>
+          <xs:attribute name="comp_id" type="xs:byte" use="required"/>
+          <xs:attribute name="subcomponents" type="xs:byte" use="required"/>
         </xs:extension>
       </xs:simpleContent>
     </xs:complexType>
@@ -14,20 +15,29 @@
     <xs:complexType>
       <xs:simpleContent>
         <xs:extension base="xs:string">
-          <xs:attribute type="xs:string" name="processor-name" use="required"/>
-          <xs:attribute type="xs:string" name="device-type" use="required"/>
-          <xs:attribute type="xs:string" name="CPU-type" use="required"/>
+          <xs:attribute name="processor-name" type="xs:string" use="required"/>
+          <xs:attribute name="device-type" type="xs:string" use="required"/>
+          <xs:attribute name="CPU-type" type="xs:string" use="required"/>
         </xs:extension>
       </xs:simpleContent>
     </xs:complexType>
   </xs:element>
+  
+  <xs:element name="scheduling_param">
+  <xs:complexType>
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="value" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:element>
   <xs:element name="loop-mapping">
     <xs:complexType>
       <xs:simpleContent>
         <xs:extension base="xs:string">
-          <xs:attribute type="xs:byte" name="id" use="required"/>
-          <xs:attribute type="xs:string" name="target-hw-element" use="required"/>
-          <xs:attribute type="xs:byte" name="loop-iterations" use="required"/>
+          <xs:attribute name="id" type="xs:byte" use="required"/>
+          <xs:attribute name="target-hw-element" type="xs:string" use="required"/>
+          <xs:attribute name="loop-iterations" type="xs:byte" use="required"/>
         </xs:extension>
       </xs:simpleContent>
     </xs:complexType>
@@ -36,7 +46,7 @@
     <xs:complexType>
       <xs:simpleContent>
         <xs:extension base="xs:string">
-          <xs:attribute type="xs:string" name="name" use="required"/>
+          <xs:attribute name="name" type="xs:string" use="required"/>
         </xs:extension>
       </xs:simpleContent>
     </xs:complexType>
@@ -45,7 +55,7 @@
     <xs:complexType>
       <xs:simpleContent>
         <xs:extension base="xs:string">
-          <xs:attribute type="xs:string" name="name" use="required"/>
+          <xs:attribute name="name" type="xs:string" use="required"/>
         </xs:extension>
       </xs:simpleContent>
     </xs:complexType>
@@ -53,12 +63,13 @@
   <xs:element name="mapping">
     <xs:complexType>
       <xs:sequence>
-        <xs:element ref="component" minOccurs="1" maxOccurs="1"/>
-        <xs:element ref="CPU" minOccurs="1" maxOccurs="1"/>
-        <xs:element ref="loop-mapping" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element maxOccurs="1" minOccurs="1" ref="component"/>
+        <xs:element maxOccurs="1" minOccurs="1" ref="CPU"/>
+        <xs:element maxOccurs="unbounded" minOccurs="0" ref="loop-mapping"/>
+        <xs:element maxOccurs="unbounded" minOccurs="0" ref="scheduling_param"/>
       </xs:sequence>
-      <xs:attribute type="xs:string" name="name" use="required"/>
-      <xs:attribute type="xs:string" name="type" use="optional"/>
+      <xs:attribute name="name" type="xs:string" use="required"/>
+      <xs:attribute name="type" type="xs:string" use="optional"/>
     </xs:complexType>
   </xs:element>
   <xs:element name="deployment">
@@ -66,9 +77,9 @@
       <xs:sequence>
         <xs:element ref="target-application"/>
         <xs:element ref="target-hw-platform"/>
-        <xs:element ref="mapping" maxOccurs="unbounded" minOccurs="0"/>
+        <xs:element maxOccurs="unbounded" minOccurs="0" ref="mapping"/>
       </xs:sequence>
-      <xs:attribute type="xs:string" name="name" use="required"/>
+      <xs:attribute name="name" type="xs:string" use="required"/>
     </xs:complexType>
   </xs:element>
 </xs:schema>
