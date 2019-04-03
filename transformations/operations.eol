@@ -51,3 +51,8 @@ operation DE!MappingType getCpuName() : String {
 		return "";
 	}
 }
+
+//Some characters will confuse MAST if used in names so sanitize them out
+operation String sanitize() : String {
+    return self.replace("-", "").replace(":", "").replace("'", "");
+}

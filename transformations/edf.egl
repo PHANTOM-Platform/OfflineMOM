@@ -12,7 +12,7 @@ for (match in CPUsWithFPComponents) {
 %]
 Processing_Resource (
 	Type => Fixed_Priority_Processor,
-	Name => [%=cpu.name%]);
+	Name => [%=cpu.name.sanitize()%]);
 [%
 }
 %]
@@ -29,24 +29,25 @@ for (match in FPComponentMappings) {
 
 Scheduling_Server (
 	Type => Fixed_Priority,
-	Name => sch_server_[%=mapping.name%],
+	Name => sch_server_[%=mapping.name.sanitize()%],
 	Server_Sched_Parameters => (
 		Type => Fixed_Priority_policy,
 		The_Priority => [%=mapping.getSP("priority")%]),
-	Server_Processing_Resource => [%=cpu.name%]);
+	Server_Processing_Resource => [%=cpu.name.sanitize()%]);
 
 Transaction (
 	Type => Regular,
-	Name => trans_[%=mapping.name%]_[%=component.name%],
+	Name => trans_[%=mapping.name.sanitize()%]_[%=component.name.sanitize()%],
 	External_Events => (
-		(Type => Periodic, Name => [%=mapping.name%]_[%=component.name%]_input_event, Period => [%=mapping.getSP("period")%])),
+		(Type => Periodic, Name => [%=mapping.name.sanitize()%]_[%=component.name.sanitize()%]_input_event, Period => [%=mapping.getSP("period")%])),
 	Internal_Events => (
 		(Type => regular,
-		name => [%=mapping.name%]_[%=component.name%]_output_event[%
+		name => [%=mapping.name.sanitize()%]_[%=component.name.sanitize()%]_output_event[%
 if (component.hasNFR("execution-time")) {
 %]
 		,
-        Timing_Requirements => (Type => Hard_Global_Deadline, Deadline => [%=component.getNFR("execution-time")%], Referenced_Event => [%=mapping.name%]_[%=component.name%]_input_event)
+        Timing_Requirements => (Type => Hard_Global_Deadline, Deadline => [%=component.getNFR("execution-time")%], 
+			Referenced_Event => [%=mapping.name.sanitize()%]_[%=component.name.sanitize()%]_input_event)
 [%
 }
 %]
@@ -54,15 +55,15 @@ if (component.hasNFR("execution-time")) {
 
 	Event_Handlers => (
 		(Type => Activity,
-		Input_Event => [%=mapping.name%]_[%=component.name%]_input_event,
-		Output_Event => [%=mapping.name%]_[%=component.name%]_output_event,
-		Activity_Operation => operation_[%=mapping.name%]_[%=component.name%],
-		Activity_Server => sch_server_[%=mapping.name%]))
+		Input_Event => [%=mapping.name.sanitize()%]_[%=component.name.sanitize()%]_input_event,
+		Output_Event => [%=mapping.name.sanitize()%]_[%=component.name.sanitize()%]_output_event,
+		Activity_Operation => operation_[%=mapping.name.sanitize()%]_[%=component.name.sanitize()%],
+		Activity_Server => sch_server_[%=mapping.name.sanitize()%]))
 );
 
 Operation (
     Type => Simple,
-    Name => operation_[%=mapping.name%]_[%=component.name%], Worst_Case_Execution_Time => [%=component.mFMonitoredComputationTime.value1%]);
+    Name => operation_[%=mapping.name.sanitize()%]_[%=component.name.sanitize()%], Worst_Case_Execution_Time => [%=component.mFMonitoredComputationTime.value1%]);
 
 [%
 }
