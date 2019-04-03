@@ -101,7 +101,7 @@ def main():
 		if len(sys.argv) < 3:
 			print("Usage: {} local <input model dir>".format(sys.argv[0]))
 			sys.exit(1)
-		inputdir = enforce_trailing_slash(sys.argv[2])
+		inputdir = enforce_trailing_slash(os.path.abspath(sys.argv[2]))
 		local_mode(inputdir, inputdir, False, True)
 
 	elif sys.argv[1] == 'subscribe':
@@ -397,9 +397,9 @@ def summarise_deployment(filename):
 	mappings = doc.getElementsByTagName('mapping')
 	for m in mappings:
 		comp = m.getElementsByTagName('component')
-		proc = m.getElementsByTagName('processor')
+		proc = m.getElementsByTagName('CPU')
 		if len(comp) == 1 and len(proc) == 1:
-			print("\t{} -> {}".format(comp[0].getAttribute('name'), proc[0].getAttribute('name')))
+			print("\t{} -> {}".format(comp[0].getAttribute('name'), proc[0].getAttribute('processor-name')))
 	print(ANSI_END)
 
 
