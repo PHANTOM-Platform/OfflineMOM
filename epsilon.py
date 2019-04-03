@@ -1,7 +1,7 @@
 """
 Utility functions for running ANT builds in Eclipse
 """
-import os, sys, glob
+import os, sys, glob, subprocess
 
 def find_eclipse_install(default_path):
 	'''
@@ -92,7 +92,13 @@ def execute_epsilon(eclipse, antfile):
 		sys.exit(1)
 	jarfile = results[0]
 	cmd = "java -jar {} -application org.eclipse.ant.core.antRunner -buildfile {}".format(jarfile, antfile)
-	os.system(cmd)
+	#os.system(cmd)
+	try:
+		output = subprocess.check_output(cmd, shell=True)
+	except subprocess.CalledProcessError:
+		print("Error whilst executing Epsilon build.")
+		print(output.decode('utf-8'))
+
 
 
 def enforce_trailing_slash(path):
