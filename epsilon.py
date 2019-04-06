@@ -94,11 +94,12 @@ def execute_epsilon(eclipse, antfile):
 	cmd = "java -jar {} -application org.eclipse.ant.core.antRunner -buildfile {}".format(jarfile, antfile)
 	#os.system(cmd)
 	try:
-		output = subprocess.check_output(cmd, shell=True)
-	except subprocess.CalledProcessError:
+		subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
+	except subprocess.CalledProcessError as e:
 		print("Error whilst executing Epsilon build.")
-		print(output.decode('utf-8'))
-
+		print("Command: {}".format(cmd))
+		print(e)
+		print(e.output)
 
 
 def enforce_trailing_slash(path):
