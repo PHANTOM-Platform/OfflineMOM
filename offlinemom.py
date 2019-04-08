@@ -198,7 +198,7 @@ def local_mode(inputdir, outputdir, uploadoncedone, localmode, models = None):
 		#For each file in outputdir, run a real-time analysis
 		result, failure_reason, output, feedback = perform_analyses(outputdir, verbose)
 		if result == True:
-			print(ANSI_GREEN + "Cannot invalidate deployment {}".format(dep) + ANSI_END)
+			print(ANSI_GREEN + "Cannot invalidate deployment {}".format(os.path.basename(dep)) + ANSI_END)
 			found = dep
 			summarise_deployment(dep)
 			if uploadoncedone:
@@ -209,7 +209,7 @@ def local_mode(inputdir, outputdir, uploadoncedone, localmode, models = None):
 				updateLocalJSON(os.path.join(outputdir, os.path.splitext(dep)[0] + ".json"), "yes")
 
 		else:
-			print(ANSI_RED + "Deployment {} invalidated by test {}.".format(dep, failure_reason) + ANSI_END)
+			print(ANSI_RED + "Deployment {} invalidated by test {}.".format(os.path.basename(dep), failure_reason) + ANSI_END)
 
 			for f in feedback:
 				print(ANSI_YELLOW + f + ANSI_END)
