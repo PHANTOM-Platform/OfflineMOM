@@ -187,6 +187,7 @@ def local_mode(inputdir, outputdir, uploadoncedone, localmode, models = None):
 	#Now run an analysis for each deployment
 	found = None
 	for dep in models['de']:
+		print()
 		print(ANSI_CYAN + "Constructing build file {} for deployment {}...".format(settings.antfile, os.path.basename(dep)) + ANSI_END)
 		epsilon.create_ant_file(settings.antfile, models, dep, inputdir, outputdir)
 
@@ -195,7 +196,7 @@ def local_mode(inputdir, outputdir, uploadoncedone, localmode, models = None):
 		epsilon.execute_epsilon(eclipse_install, os.path.join(outputdir, settings.antfile))
 
 		#For each file in outputdir, run a real-time analysis
-		result, failure_reason, output = perform_analyses(outputdir, verbose)
+		result, failure_reason, output, feedback = perform_analyses(outputdir, verbose)
 		if result == True:
 			print(ANSI_GREEN + "Cannot invalidate deployment {}".format(dep) + ANSI_END)
 			found = dep
@@ -209,6 +210,10 @@ def local_mode(inputdir, outputdir, uploadoncedone, localmode, models = None):
 
 		else:
 			print(ANSI_RED + "Deployment {} invalidated by test {}.".format(dep, failure_reason) + ANSI_END)
+
+			for f in feedback:
+				print(ANSI_YELLOW + f + ANSI_END)
+
 			if uploadoncedone:
 				print(ANSI_YELLOW + "Updating metadata of invalidated deployment {} in repository".format(dep) + ANSI_END)
 				repository.uploadFile(dep, uploadoncedone, "deployment", failure_reason)
@@ -335,13 +340,14 @@ def find_input_models(inputdir):
 
 def perform_analyses(outputdir, verbose):
 	'''
-	Run all the analysis files. Returns (True, "", output) if all pass, or (False, "analysis", output) if any fail,
+	Run all the analysis files. Returns (True, "", output, set()) if all pass, or (False, "analysis", output, feedback) if any fail,
 	where "analysis" is the name of the analysis which caused the failure and output is the full output from the tool.
 	'''
 	outputs = glob.glob('{}/*.txt'.format(outputdir))
 	passed = True
 	failure_reason = ""
 	failure_contents = ""
+	failure_feedback = set()
 
 	#Determine max length of matching filenames
 	maxlen = 0
@@ -371,7 +377,7 @@ def perform_analyses(outputdir, verbose):
 		else:
 			print("Analysing file {}...{}".format(basename, " " * ((maxlen + 1) - len(basename))), end="")
 			if args[0] == 'mast':
-				cmd = [settings.mast_executable, "{}".format(" ".join(args[1:])), output]
+				cmd = [settings.mast_executable, "{}".format(" ".join(args[1:])), "-v", output]
 				result = subprocess.run(cmd, stdout=subprocess.PIPE)
 				out = str(result.stdout,'utf-8')
 				if verbose:
@@ -383,12 +389,31 @@ def perform_analyses(outputdir, verbose):
 						print(ANSI_GREEN + "Schedulability check passed." + ANSI_END)
 					else:
 						print(ANSI_RED + "System unschedulable!" + ANSI_END)
+						failure_feedback = failure_feedback.union(provideFeedback(out))
 						passed = False
 						failure_reason = basename
 						failure_contents = out
 			else:
 				print("File {} requests an unknown analysis tool: {}. Skipped.".format(output, args[0]))
-	return (passed, failure_reason, failure_contents)
+	return (passed, failure_reason, failure_contents, failure_feedback)
+
+
+def provideFeedback(output):
+	try:
+		rv = set()
+		for line in output.splitlines():
+			if line.strip().endswith("exceeds 100% utilization"):
+				rv.add(line)
+			if line.strip().startswith("Timing requirement not met in transaction "):
+				treq = line.strip()[len("Timing requirement not met in transaction "):]
+				#treq is now "<transaction name>___<component name>, internal event..."
+				treq = treq.split(',')[0]
+				treq = treq.split('___')[0]
+				rv.add("Timing requirement not met for component " + treq)
+		return rv
+	except:
+		return set()
+
 
 
 def summarise_deployment(filename):

@@ -37,7 +37,7 @@ Scheduling_Server (
 
 Transaction (
 	Type => Regular,
-	Name => trans_[%=mapping.name.sanitize()%]_[%=component.name.sanitize()%],
+	Name => trans_[%=mapping.name.sanitize()%]___[%=component.name.sanitize()%],
 	External_Events => (
 		(Type => Periodic, Name => [%=mapping.name.sanitize()%]_[%=component.name.sanitize()%]_input_event, Period => [%=mapping.getSP("period")%])),
 	Internal_Events => (
