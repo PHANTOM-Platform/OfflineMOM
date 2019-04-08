@@ -401,6 +401,7 @@ def perform_analyses(outputdir, verbose):
 def provideFeedback(output):
 	try:
 		rv = set()
+		missed = set()
 		for line in output.splitlines():
 			if line.strip().endswith("exceeds 100% utilization"):
 				rv.add(line)
@@ -408,8 +409,16 @@ def provideFeedback(output):
 				treq = line.strip()[len("Timing requirement not met in transaction "):]
 				#treq is now "<transaction name>___<component name>, internal event..."
 				treq = treq.split(',')[0]
-				treq = treq.split('___')[0]
-				rv.add("Timing requirement not met for component " + treq)
+				missed.add(treq.split('___')[1])
+		
+		component = "components"
+		if len(missed) == 1:
+			component = "component"
+		missedstr = "Timing requirement not met for " + component + ": "
+		for m in missed:
+			missedstr = missedstr + m + "  "
+		rv.add(missedstr)
+
 		return rv
 	except:
 		return set()
